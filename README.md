@@ -29,15 +29,15 @@ Employ the Maurer.OKTAFilter when interacting with APIs that require OKTA authen
 3. OKTAFilter
   * IAsyncActionFilter implementation encapsulating the token service and retry logic for refreshes and retries.
 
-###Interactions
+### Interactions
 
 A client initiates a token request from a distributed in-memory cache.
 
-###Outcomes
+### Outcomes
 
 * Simplifies OKTA authentication services and associated complexity to straightforward Dependency Injection (DI) and collection-like references to the stored token.
 * 401, 403, and 407 calls have a configurable retry policy for token acquisition, defined in appsettings.json.
 * Tokens are shared across multiple client requests, reducing OKTA costs to the organization compared to issuing a new token per call.
 * Token refresh occurs automatically.
 
-##Implementation Guide
+## Implementation Guide
