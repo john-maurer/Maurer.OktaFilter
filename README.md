@@ -131,6 +131,8 @@ You'll need to acquire a valid oauth user name, password and URL from your organ
 Multiple methods exist for setting up your distributed cache. The simplest is an in-memory cache for local caching within the same application instance.
 
 ```
+using Maurer.OktaFilter
+
 //...other code...
 
 //...inject caching...
@@ -144,8 +146,8 @@ services.AddSingleton<IDistributedCacheHelper, DistributedCacheHelper>();
 services.AddSingleton<ITokenService, TokenService>();
 
 //...inject the action filter...
-services.AddSingleton<OKTA.Filter>(services => {
-    return new OKTA.Filter(
+services.AddSingleton<Filter>(services => {
+    return new Filter(
         services.GetRequiredService<ITokenService>(),
         services.GetRequiredService<IConfiguration>(),
         services.GetRequiredService<IDistributedCacheHelper>(),
