@@ -1,10 +1,10 @@
-#Maurer.OktaFilter
+# Maurer.OktaFilter
 
-##Intent
+## Intent
 
 This library aims to provide a seamless solution for acquiring, applying, and storing OKTA security tokens for OKTA token dependant services with minimal impact.
 
-###Dependencies
+### Dependencies
 
 Polly
 Microsoft.AspNetCore.Mvc.Core
@@ -13,14 +13,14 @@ Microsoft.Extensions.Caching.Abstractions
 Microsoft.Extensions.Configuration.Abstractions
 Microsoft.Extensions.Logging.Abstractions
 
-###Why use it?
+### Why use it?
 Use OKTA.Filter where obtaining an authentication OKTA security token and incorporating it into calls where an OKTA token is a necessity. Managing this handshake is crucial due to the cross-cutting concern of operational costs associated with OKTA, and managing the inherent complexity coupled with conflicting team standards can make it challenging. The OKTA.Filter class library addresses this need.
 
-###When to Use
+### When to Use
 
 Employ the OKTA.Filter when interacting with APIs that require OKTA authentication to abstract the authentication process away from the core work.
 
-###Components
+### Components
 
 1. DistributedCacheHelper
   * A DistributedCache wrapper that abstracts usage and facilitates unit testing.
@@ -29,20 +29,20 @@ Employ the OKTA.Filter when interacting with APIs that require OKTA authenticati
 3. OKTAFilter
   * IAsyncActionFilter implementation encapsulating the token service and retry logic for refreshes and retries.
 
-###Interactions
+### Interactions
 
 A client initiates a token request from a distributed in-memory cache.
 
-###Outcomes
+### Outcomes
 
 * Simplifies OKTA authentication services and associated complexity to straightforward Dependency Injection (DI) and collection-like references to the stored token.
 * 401, 403, and 407 calls have a configurable retry policy for token acquisition, defined in appsettings.json.
 * Tokens are shared across multiple client requests, reducing OKTA costs to the organization compared to issuing a new token per call.
 * Token refresh occurs automatically.
 
-##Implementation Guide
+## Implementation Guide
 
-###1. Configure Secrets in Azure Key Vault and Export to Azure Configuration Services
+### 1. Configure Secrets in Azure Key Vault and Export to Azure Configuration Services
 
 1.1 Add three elements to your Azure Key Vault:
 
@@ -52,14 +52,14 @@ A client initiates a token request from a distributed in-memory cache.
 
 You'll need to acquire a valid oauth user name, password and URL from your organization.
 
-###2. Install the Package
+### 2. Install the Package
 
 2.1 Right-click on your project and select 'Manage NuGet Packages...'.
 2.2 Change your Package Source to 'Nuget' (https://my.awesome.link/nuget/v3/index.json).
 2.3 Migrate to the 'Browse' tab.
 2.4 In the search bar, type 'Maurer.OKTAFilter' and install the latest package.
 
-###3. Configure appsettings.json
+### 3. Configure appsettings.json
 
 3.1 Add the following block to your project's appsettings.json and set these values as needed:
 
@@ -71,7 +71,7 @@ You'll need to acquire a valid oauth user name, password and URL from your organ
 },
 ```
 
-###4. Configure DI in Startup
+### 4. Configure DI in Startup
 
 Multiple methods exist for setting up your distributed cache. The simplest is an in-memory cache for local caching within the same application instance.
 
@@ -100,7 +100,7 @@ services.AddSingleton<OKTA.Filter>(services => {
 
 Alternative caching methods are detailed below.
 
-###Redis Cache
+### Redis Cache
 
 Redis can cache data across multiple applications and application instances on multiple servers, unlike just a single application instance.
 
@@ -135,11 +135,11 @@ services.AddSingleton<IDistributedCacheHelper, DistributedCacheHelper>(services 
 });
 ```
 
-##SQL Server Cache
+## SQL Server Cache
 
 An SQL server can also be used as a caching store. The 'sql-cache' tool can help create a table for caching.
 
-###1. Use the dotnet command 'sql-cache create'.
+### 1. Use the dotnet command 'sql-cache create'.
 
 
 ```
@@ -175,7 +175,7 @@ builder.Services.AddDistributedSqlServerCache(options =>
 });
 ```
 
-###Distributed SQL Server Cache (using Entity Framework)
+### Distributed SQL Server Cache (using Entity Framework)
 
 Entity framework can also be used for more control and application integration.
 
@@ -193,7 +193,7 @@ services.AddDistributedSqlServerCache(options =>
 });
 ```
 
-##Using the Filter in a Controller
+## Using the Filter in a Controller
 
 Add the Filter's Tag to the Controller:
 
@@ -229,15 +229,15 @@ public MyController(ILogger<MyController> logger, IConfiguration configuration, 
 }
 ```
 
-###Extracting the Token
+### Extracting the Token
 
-####As an Token Object
+#### As an Token Object
 
 ```
 var tokenResponse = JsonConvert.DeserializeObject<Token>((await _memoryCache.Get("OKTA-TOKEN"))!);
 ```
 
-####Just the Token as a String
+#### Just the Token as a String
 
 ```
 var token = JsonConvert.DeserializeObject<Token>((await _memoryCache.Get("OKTA-TOKEN"))!).AccessToken;
