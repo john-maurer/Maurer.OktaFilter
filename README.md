@@ -36,7 +36,7 @@ A client initiates a token request from a distributed in-memory cache.
 ### Outcomes
 
 * Simplifies OKTA authentication services and associated complexity to straightforward Dependency Injection (DI) and collection-like references to the stored token.
-* 401, 403, and 407 calls have a configurable retry policy for token acquisition, defined in appsettings.json.
+* 401, 403, and 407 calls have a configurable retry policy for token acquisition, defined in Maurer.OktaFilter.Settings.cs which can be used with appsettings.json in your startup.cs file.
 * Tokens are shared across multiple client requests, reducing OKTA costs to the organization compared to issuing a new token per call.
 * Token refresh occurs automatically.
 
