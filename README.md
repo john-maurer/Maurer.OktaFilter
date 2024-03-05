@@ -154,6 +154,7 @@ services.AddSingleton<Filter>(services => {
         services.GetRequiredService<ILogger<Filter>>()
     );
 });
+```
 
 Alternative caching methods are detailed below.
 
