@@ -258,7 +258,7 @@ Add the Filter's Tag to the Controller:
 ```
 [ApiController]
 [Route("mine")]
-[TypeFilter(typeof(AuthenticationFilter))]
+[TypeFilter(typeof(Maurer.OktaFilter.Filter))]
 public class MyController : ControllerBase
 {
 ```
@@ -268,7 +268,7 @@ Include an Internal Point of Reference to the Distributed Cache:
 ```
 [ApiController]
 [Route("mine")]
-[TypeFilter(typeof(AuthenticationFilter))]
+[TypeFilter(typeof(Maurer.OktaFilter.Filter))]
 public class MyController : ControllerBase
 {
     private readonly IConfiguration _configuration;
