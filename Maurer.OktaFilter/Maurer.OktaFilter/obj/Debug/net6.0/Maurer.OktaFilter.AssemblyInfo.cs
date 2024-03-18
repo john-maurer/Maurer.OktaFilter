@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Maurer.OktaFilter")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4efed827bd4de4f192cbc65255d798b97af62a95")]
 [assembly: System.Reflection.AssemblyProductAttribute("Maurer.OktaFilter")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Maurer.OktaFilter")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

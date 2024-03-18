@@ -1,7 +1,9 @@
 ﻿using Newtonsoft.Json;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Maurer.OktaFilter.Models
 {
+    [ExcludeFromCodeCoverage]
     public class Token
     {
         public Token()
