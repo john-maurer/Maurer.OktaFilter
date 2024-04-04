@@ -13,13 +13,13 @@ namespace UnitTesting.Assertions.Service
 
         [Fact]
         async public Task ShouldHandleStatusOKWithoutException() =>
-            await Record.ExceptionAsync(() => _fixture.ContextOK.GetToken());
+            await Record.ExceptionAsync(() => Act(_fixture.ContextServiceOK));
         
 
         [Fact]
         async public Task ShouldReturnTokenOnStatusOK()
         {
-            object? result = await _fixture.ContextOK.GetToken();
+            object? result = await Act(_fixture.ContextServiceOK);
 
             Assert.NotNull(result);
             Assert.IsType<Token>(result);
@@ -27,36 +27,36 @@ namespace UnitTesting.Assertions.Service
 
         [Fact]
         async public Task ShouldHandleStatusUnauthorizedWithoutException() =>
-            await Record.ExceptionAsync(() => _fixture.ContextUnauthorized.GetToken());
+            await Record.ExceptionAsync(() => Act(_fixture.ContextServiceUnauthorized));
 
         [Fact]
         async public Task ShouldReturnNullOnStatusUnauthorized()
         {
-            object? result = await _fixture.ContextUnauthorized.GetToken();
+            object? result = await Act(_fixture.ContextServiceUnauthorized);
 
             Assert.Null(result);
         }
 
         [Fact]
         async public Task ShouldHandleStatusForbiddenWithoutException() =>
-            await Record.ExceptionAsync(() => _fixture.ContextForbidden.GetToken());
+            await Record.ExceptionAsync(() => Act(_fixture.ContextServiceForbidden));
 
         [Fact]
         async public Task ShouldReturnNullOnStatusForbidden()
         {
-            object? result = await _fixture.ContextForbidden.GetToken();
+            object? result = await Act(_fixture.ContextServiceForbidden);
 
             Assert.Null(result);
         }
 
         [Fact]
         async public Task ShouldHandleStatusProxyRequiredWithoutException() =>
-            await Record.ExceptionAsync(() => _fixture.ContextProxyRequired.GetToken());
+            await Record.ExceptionAsync(() => Act(_fixture.ContextServiceProxyRequired));
 
         [Fact]
         async public Task ShouldReturnNullOnStatusProxyRequired()
         {
-            object? result = await _fixture.ContextProxyRequired.GetToken();
+            object? result = await Act(_fixture.ContextServiceProxyRequired);
 
             Assert.Null(result);
         }

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Maurer.OktaFilter.Services;
+﻿using Maurer.OktaFilter.Services;
 using UnitTesting.Fixture;
 
 namespace UnitTesting.Harness

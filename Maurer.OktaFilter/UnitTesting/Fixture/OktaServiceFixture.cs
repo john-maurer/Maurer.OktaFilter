@@ -54,17 +54,17 @@ namespace UnitTesting.Fixture
             var mockClientForbidden = new HttpClient(MockMessageHandler(HttpStatusCode.Forbidden, "Forbidden: Insufficient permissions to access this resource."));
             var mockClientProxyRequired = new HttpClient(MockMessageHandler((HttpStatusCode)407, "Proxy Authentication Required: Unable to authenticate with proxy server."));
 
-            ContextOK = new TokenService(mockLogger.Object, mockClientOK);
-            ContextUnauthorized = new TokenService(mockLogger.Object, mockClientUnauthorized);
-            ContextForbidden = new TokenService(mockLogger.Object, mockClientForbidden);
-            ContextProxyRequired = new TokenService(mockLogger.Object, mockClientProxyRequired);
+            ContextServiceOK = new TokenService(mockLogger.Object, mockClientOK);
+            ContextServiceUnauthorized = new TokenService(mockLogger.Object, mockClientUnauthorized);
+            ContextServiceForbidden = new TokenService(mockLogger.Object, mockClientForbidden);
+            ContextServiceProxyRequired = new TokenService(mockLogger.Object, mockClientProxyRequired);
         }
 
         public OktaServiceFixture() => Arrange();
 
-        public TokenService ContextOK { get; set; }
-        public TokenService ContextUnauthorized{ get; set; }
-        public TokenService ContextForbidden { get; set; }
-        public TokenService ContextProxyRequired { get; set; }
+        public TokenService ContextServiceOK { get; set; }
+        public TokenService ContextServiceUnauthorized{ get; set; }
+        public TokenService ContextServiceForbidden { get; set; }
+        public TokenService ContextServiceProxyRequired { get; set; }
     }
 }

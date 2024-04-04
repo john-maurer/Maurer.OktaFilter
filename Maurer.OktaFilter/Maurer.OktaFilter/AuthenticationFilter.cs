@@ -9,19 +9,19 @@ using Polly.Retry;
 
 namespace Maurer.OktaFilter
 {
-    public class Filter<TokenService> : IAsyncActionFilter
+    public class AuthenticationFilter<TokenService> : IAsyncActionFilter
         where TokenService : ITokenService
     {
-        private readonly ILogger<Filter<TokenService>> _logger;
+        private readonly ILogger<AuthenticationFilter<TokenService>> _logger;
         private readonly TokenService _tokenService;
         private readonly AsyncRetryPolicy<IActionResult> _retryPolicy;
         private readonly IDistributedCacheHelper _memoryCache;
         private readonly DistributedCacheEntryOptions _cacheOptions;
 
-        public Filter(
+        public AuthenticationFilter(
             TokenService tokenService,
             IDistributedCacheHelper memoryCache,
-            ILogger<Filter<TokenService>> logger)
+            ILogger<AuthenticationFilter<TokenService>> logger)
         {
             _logger = logger;
             _tokenService = tokenService;
@@ -44,7 +44,7 @@ namespace Maurer.OktaFilter
                 });
         }
 
-        private static bool IsAuthenticationError(ObjectResult? result) =>
+        virtual protected bool IsAuthenticationError(ObjectResult? result) =>
             result?.StatusCode is 401 or 403 or 407;
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
