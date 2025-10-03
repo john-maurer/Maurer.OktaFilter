@@ -65,7 +65,7 @@ You'll need to acquire a valid oauth user name, password and URL from your organ
 
 * **OAUTHUSER** - Authorized user/principle ID
 * **OAUTHPASSWORD** - Password associated with user/principle ID
-* **OAUTHURL** - Your organizations (OKTA url)[https://developer.okta.com/docs/guides/find-your-domain/main/].
+* **OAUTHURL** – Your organization's [OKTA URL](https://developer.okta.com/docs/guides/find-your-domain/main/).
 * **RETRIES** - The number of attempts the filter should make to acquire an OKTA token.
 * **RETRYSLEEP** - The number in seconds to wait in between retry attempts.
 * **TOKENLIFETIME** - The lifetime in minutes of the OKTA token, should not exceed 55 minutes.
@@ -124,13 +124,13 @@ You'll need to acquire a valid oauth user name, password and URL from your organ
 
     It's essential to carefully define and request only the scopes needed for the application's functionality to follow the principle of least privilege and minimize potential security risks.
 
-    Learn more (here)[https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc].
+    Learn more [here][https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc].
 
 ### 4. Configure DI in Startup
 
 Multiple methods exist for setting up your distributed cache. The simplest is an in-memory cache for local caching within the same application instance.
 
-```
+```csharp
 using Maurer.OktaFilter
 
 //...other code...
@@ -164,7 +164,7 @@ Redis can cache data across multiple applications and application instances on m
 
 Install the latest Microsoft.Extensions.Caching.StackExchangeRedis package and replace the following code from the previous example:
 
-```
+```csharp
 //...inject caching...
 services.AddMemoryCache();
 services.AddDistributedMemoryCache();
@@ -172,7 +172,7 @@ services.AddDistributedMemoryCache();
 
 With this:
 
-```
+```csharp
 services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = "your-redis-connection-string";
@@ -181,13 +181,13 @@ services.AddStackExchangeRedisCache(options =>
 
 Then replace this line:
 
-```
+```csharp
 services.AddSingleton<IDistributedCacheHelper, DistributedCacheHelper>();
 ```
 
 With this:
 
-```
+```csharp
 services.AddSingleton<IDistributedCacheHelper, DistributedCacheHelper>(services => {
   return new DistributedCacheHelper(services.GetRequiredService<IDistributedCache>());
 });
@@ -200,7 +200,7 @@ An SQL server can also be used as a caching store. The 'sql-cache' tool can help
 ### 1. Use the dotnet command 'sql-cache create'.
 
 
-```
+```csharp
 dotnet sql-cache create "Data Source=(localdb)/MSSQLLocalDB;Initial Catalog=DistCache;Integrated Security=True;" dbo MySuperRadCache
 ```
 
@@ -216,7 +216,7 @@ This produces a table called 'MySuperRadCache' with the following schema:
 
 Next, replace this code from the original example:
 
-```
+```csharp
 //...inject caching...
 services.AddMemoryCache();
 services.AddDistributedMemoryCache();
@@ -224,7 +224,7 @@ services.AddDistributedMemoryCache();
 
 With something like this:
 
-```
+```csharp
 builder.Services.AddDistributedSqlServerCache(options =>
 {
     options.ConnectionString = builder.Configuration.GetConnectionString("your-sql-connection-string");
@@ -237,7 +237,7 @@ builder.Services.AddDistributedSqlServerCache(options =>
 
 Entity framework can also be used for more control and application integration.
 
-```
+```csharp
 services.AddDbContext<YourCacheDbContext>(options =>
 {
     options.UseSqlServer("your-sql-connection-string");
@@ -255,7 +255,7 @@ services.AddDistributedSqlServerCache(options =>
 
 Add the Filter's Tag to the Controller:
 
-```
+```csharp
 [ApiController]
 [Route("mine")]
 [TypeFilter(typeof(Maurer.OktaFilter.Filter))]
@@ -265,7 +265,7 @@ public class MyController : ControllerBase
 
 Include an Internal Point of Reference to the Distributed Cache:
 
-```
+```csharp
 [ApiController]
 [Route("mine")]
 [TypeFilter(typeof(Maurer.OktaFilter.Filter))]
@@ -278,7 +278,7 @@ public class MyController : ControllerBase
 
 Modify the Constructor to take a Reference to the Distributed Cache from DI:
 
-```
+```csharp
 public MyController(ILogger<MyController> logger, IConfiguration configuration, IDistributedCacheHelper memoryCache)
 {
     _logger = logger;
@@ -291,12 +291,12 @@ public MyController(ILogger<MyController> logger, IConfiguration configuration, 
 
 #### As an Token Object
 
-```
+```csharp
 var tokenResponse = JsonConvert.DeserializeObject<Token>((await _memoryCache.Get("OKTA-TOKEN"))!);
 ```
 
 #### Just the Token as a String
 
-```
+```csharp
 var token = JsonConvert.DeserializeObject<Token>((await _memoryCache.Get("OKTA-TOKEN"))!).AccessToken;
 ```
