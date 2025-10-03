@@ -124,7 +124,7 @@ You'll need to acquire a valid oauth user name, password and URL from your organ
 
     It's essential to carefully define and request only the scopes needed for the application's functionality to follow the principle of least privilege and minimize potential security risks.
 
-    Learn more [here][https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc].
+    Learn more [here](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc).
 
 ### 4. Configure DI in Startup
 
