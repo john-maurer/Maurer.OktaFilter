@@ -1,9 +1,7 @@
 ﻿using Newtonsoft.Json;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Maurer.OktaFilter.Models
 {
-    [ExcludeFromCodeCoverage]
     public class Token
     {
         public Token()
@@ -22,16 +20,16 @@ namespace Maurer.OktaFilter.Models
             Scope = token.Scope;
         }
 
-        [JsonProperty("AccessToken")]
+        [JsonProperty("access_token")]
         public string AccessToken { get; set; }
 
-        [JsonProperty("TokenType")]
+        [JsonProperty("token_type")]
         public string TokenType { get; set; }
 
-        [JsonProperty("ExpiresIn")]
+        [JsonProperty("expires_in")]
         public string ExpiresIn { get; set; }
 
-        [JsonProperty("Scope")]
+        [JsonProperty("scope")]
         public string Scope { get; set; }
     }
 }

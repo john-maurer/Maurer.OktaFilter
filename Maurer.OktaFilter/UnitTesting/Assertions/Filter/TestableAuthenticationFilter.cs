@@ -8,7 +8,7 @@ namespace UnitTesting.Assertions.Filter
 {
     public class TestableAuthenticationFilter : AuthenticationFilter<TokenService>
     {
-        public TestableAuthenticationFilter(TokenService tokenService, IDistributedCacheHelper memoryCache, ILogger<AuthenticationFilter<TokenService>> logger) 
+        public TestableAuthenticationFilter(ITokenService tokenService, IDistributedCacheHelper memoryCache, ILogger<AuthenticationFilter<TokenService>> logger) 
             : base(tokenService, memoryCache, logger)
         {
             Counter = 0;
@@ -16,9 +16,9 @@ namespace UnitTesting.Assertions.Filter
 
         public int Counter { get; set; }
 
-        override protected bool IsAuthenticationError(ObjectResult? resultObj)
+        protected override bool IsAuthenticationFailure(IActionResult? actionResult)
         {
-            var result = base.IsAuthenticationError(resultObj);
+            var result = base.IsAuthenticationFailure(actionResult);
 
             if (result) Counter++;
 

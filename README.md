@@ -63,13 +63,14 @@ You'll need to acquire a valid oauth user name, password and URL from your organ
 
 3.1 Use the static 'Settings' object properties to configure the filter and how OKTA tokens are managed:
 
-* **OAUTHUSER** - Authorized user/principle ID
-* **OAUTHPASSWORD** - Password associated with user/principle ID
+* **OAUTHUSER** – Authorized user/principle ID
+* **OAUTHPASSWORD** – Password associated with user/principle ID
 * **OAUTHURL** – Your organization's [OKTA URL](https://developer.okta.com/docs/guides/find-your-domain/main/).
-* **RETRIES** - The number of attempts the filter should make to acquire an OKTA token.
-* **RETRYSLEEP** - The number in seconds to wait in between retry attempts.
-* **TOKENLIFETIME** - The lifetime in minutes of the OKTA token, should not exceed 55 minutes.
-* **GRANTTYPE** - In the context of Azure and identity management, a "grant type" typically refers to the method used by an application to obtain an access token. Access tokens are credentials that represent the authorization granted to the application to access a user's data.  Azure Active Directory (Azure AD), which is Microsoft's cloud-based identity and access management service, supports several OAuth 2.0 authorization grant types. Here are some common grant types used in Azure AD:
+* **OAUTHKEY** – The KEY value associated with your OKTA key (examples will use "*OKTA-TOKEN*").
+* **RETRIES** – The number of attempts the filter should make to acquire an OKTA token.
+* **RETRYSLEEP** – The number in seconds to wait in between retry attempts.
+* **TOKENLIFETIME** – The lifetime in minutes of the OKTA token, should not exceed 55 minutes.
+* **GRANTTYPE** – In the context of Azure and identity management, a "grant type" typically refers to the method used by an application to obtain an access token. Access tokens are credentials that represent the authorization granted to the application to access a user's data.  Azure Active Directory (Azure AD), which is Microsoft's cloud-based identity and access management service, supports several OAuth 2.0 authorization grant types. Here are some common grant types used in Azure AD:
 
     **Authorization Code Grant:**
 
@@ -143,17 +144,10 @@ services.AddDistributedMemoryCache();
 services.AddSingleton<IDistributedCacheHelper, DistributedCacheHelper>();
 
 //...inject the token service...
-services.AddSingleton<ITokenService, TokenService>();
+services.AddHttpClient<ITokenService, TokenService>();
 
 //...inject the action filter...
-services.AddSingleton<Filter>(services => {
-    return new Filter(
-        services.GetRequiredService<ITokenService>(),
-        services.GetRequiredService<IConfiguration>(),
-        services.GetRequiredService<IDistributedCacheHelper>(),
-        services.GetRequiredService<ILogger<Filter>>()
-    );
-});
+services.AddScoped<AuthenticationFilter>();
 ```
 
 Alternative caching methods are detailed below.
@@ -292,11 +286,13 @@ public MyController(ILogger<MyController> logger, IConfiguration configuration, 
 #### As an Token Object
 
 ```csharp
-var tokenResponse = JsonConvert.DeserializeObject<Token>((await _memoryCache.Get("OKTA-TOKEN"))!);
+var tokenResponse = JsonConvert.DeserializeObject<Token>
+    ((await _memoryCache.Get(Maurer.OktaFilter.Settings.Settings.OAUTHKEY))!);
 ```
 
 #### Just the Token as a String
 
 ```csharp
-var token = JsonConvert.DeserializeObject<Token>((await _memoryCache.Get("OKTA-TOKEN"))!).AccessToken;
+var token = JsonConvert.DeserializeObject<Token>
+    ((await _memoryCache.Get(Maurer.OktaFilter.Settings.Settings.OAUTHKEY))!).AccessToken;
 ```

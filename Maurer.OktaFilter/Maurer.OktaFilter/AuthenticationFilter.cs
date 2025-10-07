@@ -13,56 +13,71 @@ namespace Maurer.OktaFilter
         where TokenService : ITokenService
     {
         private readonly ILogger<AuthenticationFilter<TokenService>> _logger;
-        private readonly TokenService _tokenService;
+        private readonly ITokenService _tokenService;
         private readonly AsyncRetryPolicy<IActionResult> _retryPolicy;
         private readonly IDistributedCacheHelper _memoryCache;
-        private readonly DistributedCacheEntryOptions _cacheOptions;
 
-        public AuthenticationFilter(
-            TokenService tokenService,
-            IDistributedCacheHelper memoryCache,
-            ILogger<AuthenticationFilter<TokenService>> logger)
+        private static DistributedCacheEntryOptions BuildCacheOptions() =>
+            new DistributedCacheEntryOptions
+                { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(Convert.ToInt32(Settings.TOKENLIFETIME)) };
+
+
+        public AuthenticationFilter( ITokenService tokenService, IDistributedCacheHelper memoryCache, ILogger<AuthenticationFilter<TokenService>> logger)
         {
             _logger = logger;
             _tokenService = tokenService;
             _memoryCache = memoryCache;
-            _cacheOptions = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpiration = DateTimeOffset.UtcNow.AddMinutes(Convert.ToInt32(Settings.TOKENLIFETIME)),
-                SlidingExpiration = TimeSpan.FromMinutes(Convert.ToInt32(Settings.TOKENLIFETIME)),
-            };
 
             _retryPolicy = Policy
                 .Handle<Exception>()
-                .OrResult<IActionResult>(response => IsAuthenticationError((ObjectResult)response))
-                .RetryAsync(Convert.ToInt32(Settings.RETRIES), async (_, retryCount) =>
-                {
-                    _logger.LogWarning("Starting attempt #{0} at re-authenticating...", retryCount);
-                    await Task.Delay(Convert.ToInt32(Settings.RETRYSLEEP));
-                    var token = await _tokenService.GetToken();
-                    await _memoryCache.Set("OKTA-TOKEN", token!.AccessToken, _cacheOptions);
-                });
+                .OrResult<IActionResult>(response => IsAuthenticationFailure(response))
+                .RetryAsync(
+                    retryCount: Convert.ToInt32(Settings.RETRIES),
+                    onRetryAsync: async (_, retryNumber) =>
+                    {
+                        _logger.LogWarning("Starting attempt #{Attempt} at re-authenticating...", retryNumber);
+
+                        var sleep = Convert.ToInt32(Settings.RETRYSLEEP);
+
+                        if (sleep > 0)
+                            await Task.Delay(TimeSpan.FromSeconds(sleep));
+                    }
+                );
         }
 
-        virtual protected bool IsAuthenticationError(ObjectResult? result) =>
-            result?.StatusCode is 401 or 403 or 407;
+        virtual protected bool IsAuthenticationFailure(IActionResult? result) =>
+            result switch
+            {
+                ObjectResult obj when obj.StatusCode is 401 or 403 or 407 => true,
+                StatusCodeResult status when status.StatusCode is 401 or 403 or 407 => true,
+                ForbidResult => true,
+                UnauthorizedResult => true,
+                _ => false
+            };
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             try
             {
-                await _retryPolicy.ExecuteAsync(async () =>
+                Settings.Validate();
+
+                if (!await _memoryCache.Has(Settings.OAUTHKEY))
                 {
-                    if (!await _memoryCache.Has("OKTA-TOKEN"))
+                    await _retryPolicy.ExecuteAsync(async () =>
                     {
                         var token = await _tokenService.GetToken();
-                        await _memoryCache.Set("OKTA-TOKEN", JsonConvert.SerializeObject(token), _cacheOptions);
-                    }
 
-                    var result = (await next()).Result as ObjectResult;
+                        if (token is null || string.IsNullOrWhiteSpace(token.AccessToken))
+                            throw new InvalidOperationException("Failed to acquire OKTA token.");
 
-                    return result!;
-                });
+                        await _memoryCache.Set(Settings.OAUTHKEY, JsonConvert.SerializeObject(token), BuildCacheOptions());
+
+                        return new StatusCodeResult(context.HttpContext.Response.StatusCode);
+                    });
+                }
+
+                var execution = await next();
+
             }
             catch
             {

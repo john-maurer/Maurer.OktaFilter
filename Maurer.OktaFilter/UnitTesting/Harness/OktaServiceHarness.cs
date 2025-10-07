@@ -1,11 +1,12 @@
-﻿using Maurer.OktaFilter.Services;
+﻿using Maurer.OktaFilter.Models;
+using Maurer.OktaFilter.Services;
 using UnitTesting.Fixture;
 
 namespace UnitTesting.Harness
 {
     public class OktaServiceHarness : AbstractHarness<OktaServiceFixture>
     {
-        protected override async Task<object?> Act(params object[] parameters)
+        protected override async Task<Token?> Act(params object[] parameters)
         {
             TokenService service = (TokenService) parameters[0];
 

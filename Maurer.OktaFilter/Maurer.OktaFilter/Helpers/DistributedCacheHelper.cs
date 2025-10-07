@@ -1,13 +1,12 @@
 ﻿using Maurer.OktaFilter.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
 using Newtonsoft.Json;
-using System.Diagnostics.CodeAnalysis;
+using Newtonsoft.Json.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Maurer.OktaFilter.Helpers
 {
-    [ExcludeFromCodeCoverage]
     public class DistributedCacheHelper : IDistributedCacheHelper
     {
         private readonly IDistributedCache _cache;
@@ -15,14 +14,16 @@ namespace Maurer.OktaFilter.Helpers
         public DistributedCacheHelper(IDistributedCache cache) => _cache = cache;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsJson(string obj)
+        public static bool IsJson(string? plainText)
         {
+            if (string.IsNullOrWhiteSpace(plainText)) return false;
+
             try
             {
-                _ = System.Text.Json.JsonDocument.Parse(obj);
+                _ = JToken.Parse(plainText);
                 return true;
             }
-            catch (System.Text.Json.JsonException)
+            catch (JsonReaderException)
             {
                 return false;
             }
@@ -31,6 +32,9 @@ namespace Maurer.OktaFilter.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async Task<string?> Get(string key)
         {
+            if (string.IsNullOrWhiteSpace(key)) 
+                throw new ArgumentException($"Parameter '{nameof(key)}' in DistributedCacheHelper.Get cannot be null or whitespace");
+
             var raw = await _cache.GetAsync(key);
             return raw != null ? Encoding.UTF8.GetString(raw) : null;
         }
@@ -38,9 +42,11 @@ namespace Maurer.OktaFilter.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async Task Set(string key, object value, DistributedCacheEntryOptions options)
         {
-            var serializedValue = value.GetType() != typeof(string)
-                ? JsonConvert.SerializeObject(value)
-                : (string)value;
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Cannot be null or whitespace");
+            if (value is null) throw new ArgumentException("Cannot be null or whitespace");
+            if (options is null) throw new ArgumentException("Cannot be null or whitespace");
+
+            var serializedValue = value as string ?? JsonConvert.SerializeObject(value);
 
             await _cache.SetAsync(key, Encoding.UTF8.GetBytes(serializedValue), options);
         }
@@ -49,7 +55,7 @@ namespace Maurer.OktaFilter.Helpers
         public async Task<bool> Has(string key)
         {
             var entry = await _cache.GetAsync(key);
-            return entry != null && entry.Any();
+            return entry is { Length: > 0 };
         }
     }
 }

@@ -35,11 +35,12 @@ namespace UnitTesting.Fixture
             Maurer.OktaFilter.Settings.OAUTHURL = "https://mockoauthserver.com/token";
             Maurer.OktaFilter.Settings.OAUTHUSER = "testuser";
             Maurer.OktaFilter.Settings.OAUTHPASSWORD = "testpassword";
+            Maurer.OktaFilter.Settings.OAUTHKEY = "OKTA-TOKEN";
             Maurer.OktaFilter.Settings.GRANTTYPE = "client_credentials";
             Maurer.OktaFilter.Settings.SCOPE = "openid profile email";
             Maurer.OktaFilter.Settings.RETRYSLEEP = "30";
             Maurer.OktaFilter.Settings.RETRIES = "3";
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = "300";
+            Maurer.OktaFilter.Settings.TOKENLIFETIME = "30";
 
             var mockLogger = new Mock<ILogger<TokenService>>();
             var token = new Token { 
