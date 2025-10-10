@@ -254,10 +254,16 @@ end
 
 ## Outcomes
 
-- Simplifies OKTA authentication services and associated complexity to straightforward Dependency Injection (DI) and collection-like references to the stored token.
-- 401, 403, and 407 calls have a configurable retry policy for token acquisition, defined in `Maurer.OktaFilter.Settings.cs` which can be used with `appsettings.json` in your startup.
-- Tokens are shared across multiple client requests, reducing OKTA costs to the organization compared to issuing a new token per call.
-- Token refresh occurs automatically.
+## Outcomes
+
+- **Lower cost & latency** — tokens are cached and reused across requests (and across instances with a distributed cache), reducing round-trips to OKTA.
+- **Resilience by default** — transient auth failures (401/403/407) are retried using Polly; retry count and delay are controlled via `Settings.RETRIES` and `Settings.RETRYSLEEP`.
+- **Predictable expiration** — cache entries honor `Settings.TOKENLIFETIME`; a new token is acquired automatically on cache miss or expiry.
+- **Simple composition** — the `IAsyncActionFilter` encapsulates the handshake so controllers stay focused on business logic; everything is wired via DI.
+- **Pluggable storage** — works with in-memory, Redis, or SQL Server distributed cache behind `IDistributedCache`.
+- **Security baseline** — `TokenService` enforces HTTPS token endpoints and uses typed JSON parsing; scopes and grant type are explicit via settings.
+- **Observability** — structured logging around token retrieval attempts, outcomes, and retry cycles to aid diagnostics across environments.
+- **Environment-friendly** — settings map cleanly from configuration providers (Key Vault, appsettings, env vars) for dev, staging, and prod.
 
 ---
 
