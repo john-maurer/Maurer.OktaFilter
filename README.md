@@ -2,6 +2,12 @@
 
 > Seamless acquisition, application, and storage of OKTA security tokens for OKTA-dependent services with minimal impact.
 
+[![Build](https://github.com/john-maurer/Maurer.OktaFilter/actions/workflows/build.yml/badge.svg)](https://github.com/john-maurer/Maurer.OktaFilter/actions/workflows/build.yml)
+[![NuGet](https://img.shields.io/nuget/v/Maurer.OktaFilter.svg)](https://www.nuget.org/packages/Maurer.OktaFilter/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Maurer.OktaFilter.svg)](https://www.nuget.org/packages/Maurer.OktaFilter/)
+![Target Frameworks](https://img.shields.io/badge/.NET-8%20%7C%209-512BD4?logo=.net)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 ## Table of Contents
 
 - [Intent](#intent)
