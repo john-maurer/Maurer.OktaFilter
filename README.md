@@ -168,11 +168,13 @@ loop Retry (Settings.RETRIES) with delay (Settings.RETRYSLEEP s)
   else success
     TokenSvc-->>Filter: Token
     Filter->>Cache: Set(OAUTHKEY, token, TTL)
-    break
+    note over Filter: Token cached (loop ends conceptually)
   end
 end
 alt all attempts failed
   Filter-->>Filter: throw InvalidOperationException("Failed to acquire OKTA token.")
+else token available
+  Filter-->>Filter: proceed
 end
 ```
 
