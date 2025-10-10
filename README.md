@@ -33,6 +33,149 @@ Employ the OKTA.Filter when interacting with APIs that require OKTA authenticati
 
 A client initiates a token request from a distributed in-memory cache.
 
+### Class relationships
+
+```mermaid
+classDiagram
+class Settings {
+  <<static>>
+  +OAUTHUSER : string
+  +OAUTHPASSWORD : string
+  +OAUTHURL : string
+  +OAUTHKEY : string
+  +GRANTTYPE : string
+  +SCOPE : string
+  +RETRIES : string
+  +RETRYSLEEP : string
+  +TOKENLIFETIME : string
+  +Validate() void
+}
+
+class IDistributedCacheHelper {
+  <<interface>>
+  +Get(key) Task~string?~
+  +Set(key, value, options) Task
+  +Has(key) Task~bool~
+}
+
+class DistributedCacheHelper {
+  -_cache : IDistributedCache
+  +Get(key) Task~string?~
+  +Set(key, value, options) Task
+  +Has(key) Task~bool~
+}
+
+class ITokenService {
+  <<interface>>
+  +GetToken() Task~Token?~
+}
+
+class TokenService {
+  -_logger : ILogger
+  -_httpClient : HttpClient
+  +GetToken() Task~Token?~
+}
+
+class AuthenticationFilter~TService~ {
+  -_logger : ILogger
+  -_tokenService : ITokenService
+  -_retryPolicy : AsyncRetryPolicy~IActionResult~
+  -_memoryCache : IDistributedCacheHelper
+  +OnActionExecutionAsync(ctx, next) Task
+  #IsAuthenticationFailure(result) bool
+}
+
+class Token {
+  +AccessToken : string
+  +TokenType : string
+  +ExpiresIn : string
+  +Scope : string
+}
+
+Settings <.. TokenService
+Settings <.. AuthenticationFilter~TService~
+IDistributedCacheHelper <|.. DistributedCacheHelper
+ITokenService <|.. TokenService
+AuthenticationFilter~TService~ ..> IDistributedCacheHelper
+AuthenticationFilter~TService~ ..> ITokenService
+```
+
+### Sequence — request with cache miss (token acquired then proceed)
+
+```mermaid
+sequenceDiagram
+autonumber
+participant Client as HTTP Client
+participant MVC as ASP.NET Core MVC
+participant Filter as AuthenticationFilter<TService>
+participant Cache as IDistributedCacheHelper
+participant TokenSvc as ITokenService
+participant Okta as OKTA OAuth Server
+participant Action as Controller Action
+
+Client->>MVC: Request /controller/action
+MVC->>Filter: OnActionExecutionAsync(...)
+Filter->>Cache: Has(Settings.OAUTHKEY)?
+alt token not present
+  loop up to Settings.RETRIES
+    Filter->>TokenSvc: GetToken()
+    TokenSvc->>Okta: POST /token (grant_type, scope, basic auth)
+    Okta-->>TokenSvc: 200 OK + { access_token, ... }
+    TokenSvc-->>Filter: Token
+    Filter->>Cache: Set(OAUTHKEY, token, TTL=TOKENLIFETIME)
+  end
+end
+Filter->>Action: await next()
+Action-->>MVC: IActionResult
+MVC-->>Client: Response
+```
+
+### Sequence — request with cache hit (no network call)
+
+```mermaid
+sequenceDiagram
+autonumber
+participant Client
+participant MVC
+participant Filter
+participant Cache
+participant Action
+
+Client->>MVC: Request
+MVC->>Filter: OnActionExecutionAsync(...)
+Filter->>Cache: Has(Settings.OAUTHKEY)?
+Cache-->>Filter: true
+Filter->>Action: await next()
+Action-->>MVC: IActionResult
+MVC-->>Client: Response
+```
+
+### Sequence — acquisition retry and failure (high level)
+
+```mermaid
+sequenceDiagram
+autonumber
+participant Filter as AuthenticationFilter<TService>
+participant Cache as IDistributedCacheHelper
+participant TokenSvc as ITokenService
+
+Filter->>Cache: Has(OAUTHKEY)?
+Cache-->>Filter: false
+loop Retry (Settings.RETRIES) with delay (Settings.RETRYSLEEP s)
+  Filter->>TokenSvc: GetToken()
+  alt failure (exception or null/empty AccessToken)
+    TokenSvc-->>Filter: failure
+  else success
+    TokenSvc-->>Filter: Token
+    Filter->>Cache: Set(OAUTHKEY, token, TTL)
+    break
+  end
+end
+alt all attempts failed
+  Filter-->>Filter: throw InvalidOperationException("Failed to acquire OKTA token.")
+end
+```
+
 ### Outcomes
 
 * Simplifies OKTA authentication services and associated complexity to straightforward Dependency Injection (DI) and collection-like references to the stored token.
