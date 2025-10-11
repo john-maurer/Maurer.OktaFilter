@@ -38,14 +38,17 @@ namespace UnitTesting.Assertions.Service
 
         private static TokenService MakeService(Action<HttpRequestMessage>? capture = null)
         {
-            var handler = new MockHttpMessageHandler(async (request, context) =>
+            var handler = new MockHttpMessageHandler((HttpRequestMessage request, CancellationToken cancellationToken) =>
             {
                 capture?.Invoke(request);
+
                 var body = JsonConvert.SerializeObject(OkBody());
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(body, Encoding.UTF8, "application/json")
                 };
+
+                return Task.FromResult(response); // Task<HttpResponseMessage>
             });
 
             var logger = new Mock<ILogger<TokenService>>();
