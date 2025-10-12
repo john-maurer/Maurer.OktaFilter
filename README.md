@@ -276,8 +276,6 @@ end
 
 ## Outcomes
 
-## Outcomes
-
 - **Lower cost & latency** — tokens are cached and reused across requests (and across instances with a distributed cache), reducing round-trips to OKTA.
 - **Resilience by default** — transient auth failures (401/403/407) are retried using Polly; retry count and delay are controlled via `Settings.RETRIES` and `Settings.SLEEP`.
 - **Predictable expiration** — cache entries honor `Settings.LIFETIME`; a new token is acquired automatically on cache miss or expiry.
