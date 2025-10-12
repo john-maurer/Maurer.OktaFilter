@@ -10,8 +10,6 @@
 
 ## Table of Contents
 
-## Table of Contents
-
 - [Intent](#intent)
 - [Dependencies](#dependencies)
 - [Why use it?](#why-use-it)
