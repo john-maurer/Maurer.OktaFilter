@@ -40,10 +40,10 @@ This library aims to provide a seamless solution for acquiring, applying, and st
 
 - **.NET**: 8 or 9
 - **NuGet packages** (from the project file)
-  - Microsoft.AspNetCore.Mvc (2.3.0)
   - Microsoft.Extensions.Caching.Abstractions (9.0.9)
   - Microsoft.Extensions.Configuration.Abstractions (9.0.9)
   - Microsoft.Extensions.Logging.Abstractions (9.0.9)
+  - Microsoft.Extensions.Http (9.0.9)
   - Newtonsoft.Json (13.0.4)
   - Polly (8.6.4)
 
@@ -56,10 +56,10 @@ This library aims to provide a seamless solution for acquiring, applying, and st
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.3.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.9" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Polly" Version="8.6.4" />
   </ItemGroup>
@@ -93,16 +93,16 @@ This library aims to provide a seamless solution for acquiring, applying, and st
 ## Components
 
 1. **DistributedCacheHelper**  
-   A DistributedCache wrapper that abstracts usage and facilitates unit testing.
+   Wrapper over `IDistributedCache` with convenience methods for strings/JSON and easy unit testing.
 
 2. **TokenService**  
-   Responsible for retrieving the OKTA token.
+   Retrieves the OKTA token over HTTPS. Pluggable via DI/HttpClient.
 
 3. **AuthenticationFilter\<TokenService\>**  
-   `IAsyncActionFilter` implementation encapsulating the token service and retry logic for refreshes and retries.
+   `IAsyncActionFilter` that ensures a token is cached before the action executes; retries acquisition via Polly as configured.
 
-4. **Settings**  
-   Static configuration values (OAuth credentials, retry policy, key name, token lifetime, grant type, scope).
+4. **OktaOptions**  
+   Typed configuration object (user, password, token URL, cache key, grant, scope, retries/sleep, token lifetime).
 
 5. **Token (model)**  
    Simple POCO (`access_token`, `token_type`, `expires_in`, `scope`).
@@ -115,18 +115,16 @@ This library aims to provide a seamless solution for acquiring, applying, and st
 
 ```mermaid
 classDiagram
-class Settings {
-  <<static>>
-  +OAUTHUSER : string
-  +OAUTHPASSWORD : string
+class OktaOptions {
+  +USER : string
+  +PASSWORD : string
   +OAUTHURL : string
   +OAUTHKEY : string
-  +GRANTTYPE : string
+  +GRANT : string
   +SCOPE : string
-  +RETRIES : string
-  +RETRYSLEEP : string
-  +TOKENLIFETIME : string
-  +Validate() void
+  +RETRIES : int
+  +SLEEP : int
+  +LIFETIME : int
 }
 
 class IDistributedCacheHelper {
@@ -151,6 +149,7 @@ class ITokenService {
 class TokenService {
   -_logger : ILogger
   -_httpClient : HttpClient
+  -_options : OktaOptions
   +GetToken() Task~Token?~
 }
 
@@ -159,6 +158,7 @@ class AuthenticationFilter~TService~ {
   -_tokenService : ITokenService
   -_retryPolicy : AsyncRetryPolicy~IActionResult~
   -_memoryCache : IDistributedCacheHelper
+  -_options : OktaOptions
   +OnActionExecutionAsync(ctx, next) Task
   #IsAuthenticationFailure(result) bool
 }
@@ -170,8 +170,8 @@ class Token {
   +Scope : string
 }
 
-Settings <.. TokenService
-Settings <.. AuthenticationFilter~TService~
+OktaOptions <.. TokenService
+OktaOptions <.. AuthenticationFilter~TService~
 IDistributedCacheHelper <|.. DistributedCacheHelper
 ITokenService <|.. TokenService
 AuthenticationFilter~TService~ ..> IDistributedCacheHelper
@@ -193,14 +193,14 @@ participant Action as Controller Action
 
 Client->>MVC: Request /controller/action
 MVC->>Filter: OnActionExecutionAsync(...)
-Filter->>Cache: Has(Settings.OAUTHKEY)?
+Filter->>Cache: Has(OktaOptions.OAUTHKEY)?
 alt token not present
-  loop up to Settings.RETRIES
+  loop up to OktaOptions.RETRIES (sleep OktaOptions.SLEEP s)
     Filter->>TokenSvc: GetToken()
-    TokenSvc->>Okta: POST /token (grant_type, scope, basic auth)
-    Okta-->>TokenSvc: 200 OK + { access_token, ... }
+    TokenSvc->>Okta: POST OktaOptions.OAUTHURL (grant, scope, basic auth)
+    Okta-->>TokenSvc: 200 + { access_token, ... }
     TokenSvc-->>Filter: Token
-    Filter->>Cache: Set(OAUTHKEY, token, TTL=TOKENLIFETIME)
+    Filter->>Cache: Set(OAUTHKEY, token, TTL=OktaOptions.LIFETIME minutes)
   end
 end
 Filter->>Action: await next()
@@ -221,7 +221,7 @@ participant Action
 
 Client->>MVC: Request
 MVC->>Filter: OnActionExecutionAsync(...)
-Filter->>Cache: Has(Settings.OAUTHKEY)?
+Filter->>Cache: Has(OktaOptions.OAUTHKEY)?
 Cache-->>Filter: true
 Filter->>Action: await next()
 Action-->>MVC: IActionResult
@@ -294,29 +294,57 @@ You'll need to acquire a valid oauth user name, password and URL from your organ
 
 ### 3. Configure Settings
 
-Use the static `Settings` object properties to configure the filter and how OKTA tokens are managed:
+Use the typed options `OktaOptions` to configure the filter and how OKTA tokens are managed:
 
 - **OAUTHUSER** – Authorized user/principle ID  
 - **OAUTHPASSWORD** – Password associated with user/principle ID  
 - **OAUTHURL** – Your organization's [OKTA URL](https://developer.okta.com/docs/guides/find-your-domain/main/).  
-- **OAUTHKEY** – The KEY value associated with your OKTA key (examples will use _OKTA-TOKEN_).  
-- **RETRIES** – The number of attempts the filter should make to acquire an OKTA token.  
-- **RETRYSLEEP** – The number in seconds to wait in between retry attempts.  
-- **TOKENLIFETIME** – The lifetime in minutes of the OKTA token, should not exceed 55 minutes.  
-- **GRANTTYPE** – The OAuth2 grant type (e.g., `client_credentials`, `authorization_code`, etc.).  
+- **OAUTHKEY** – The KEY value associated with your OKTA key (examples will use _OKTA-TOKEN_).
+- **GRANT** – The OAuth2 grant type (e.g., `client_credentials`, `authorization_code`, etc.).
 - **SCOPE** – The permissions requested when obtaining an access token. See [Scopes](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc).
+- **RETRIES** – The number of attempts the filter should make to acquire an OKTA token.  
+- **SLEEP** – The number in seconds to wait in between retry attempts.  
+- **LIFETIME** – The lifetime in minutes of the OKTA token, should not exceed 55 minutes.
+
+```json
+{
+  "Okta": {
+    "USER": "client_id",
+    "PASSWORD": "client_secret",
+    "OAUTHURL": "https://your-okta-domain/oauth2/v1/token",
+    "OAUTHKEY": "OKTA-TOKEN",
+    "GRANT": "client_credentials",
+    "SCOPE": "openid profile email",
+    "RETRIES": 2,
+    "SLEEP": 1,
+    "LIFETIME": 30
+  }
+}
+```
 
 ### 4. Configure DI in Startup
 
-Multiple methods exist for setting up your distributed cache. The simplest is an in-memory cache for local caching within the same application instance.
+Multiple methods exist for setting up your distributed cache.  There are extensions for basic setup.  Alternative caching methods are detailed below.
+
+#### 4.1 Minimal (In-Memory Cache, typed HttpClient, options bound)
+
+The simplest is an in-memory cache for local caching within the same application instance.
 
 ```csharp
 using Maurer.OktaFilter;
 using Maurer.OktaFilter.Interfaces;
 using Maurer.OktaFilter.Helpers;
 using Maurer.OktaFilter.Services;
+using Maurer.OktaFilter.Models;
 
 // ...
+
+// Bind and Validate in Startup/Program
+builder.Services.AddOptions<OktaOptions>()
+    .Bind(builder.Configuration.GetSection("Okta"))
+    .ValidateDataAnnotations()
+    .Validate(o => Uri.TryCreate(o.OAUTHURL, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps, "OAUTHURL must be an absolute HTTPS URL.")
+    .ValidateOnStart();
 
 // Inject caching
 services.AddMemoryCache();
@@ -329,14 +357,41 @@ services.AddSingleton<IDistributedCacheHelper, DistributedCacheHelper>();
 services.AddHttpClient<ITokenService, TokenService>();
 
 // Inject the action filter (closed generic)
-services.AddScoped<AuthenticationFilter<Maurer.OktaFilter.Services.TokenService>>();
+services.AddScoped<AuthenticationFilter<TokenService>>();
 ```
 
-Alternative caching methods are detailed below.
+##### 4.1.1 Code-Only options (no `IConfiguration`)
 
-### Alternative Caching Providers
+Even more minimal.
 
-#### Redis Cache
+```csharp
+builder.Services.AddSingleton(new OktaOptions { /* fill fields */ });
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSingleton<IDistributedCacheHelper, DistributedCacheHelper>();
+builder.Services.AddHttpClient<ITokenService, TokenService>();
+builder.Services.AddScoped<AuthenticationFilter<Maurer.OktaFilter.Services.TokenService>>();
+```
+
+#### 4.2 Custom HttpClient (timeouts, decompression)
+
+Customized Client and Message Handler:
+
+```csharp
+builder.Services.AddHttpClient<ITokenService, TokenService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+    AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+});
+
+builder.Services.AddSingleton<IDistributedCacheHelper, DistributedCacheHelper>();
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddScoped<AuthenticationFilter<Maurer.OktaFilter.Services.TokenService>>();
+```
+
+#### 4.3 Redis Cache
 
 Redis can cache data across multiple applications and application instances on multiple servers, unlike just a single application instance.
 
@@ -357,13 +412,23 @@ services.AddStackExchangeRedisCache(options =>
 });
 ```
 
-Keep the helper registration:
+Keep the helper registration singleton:
 
 ```csharp
 services.AddSingleton<IDistributedCacheHelper, DistributedCacheHelper>();
 ```
 
-#### SQL Server Cache
+As well as the calls to AddHttpClient and AddScoped:
+
+```csharp
+// Inject the token service
+services.AddHttpClient<ITokenService, TokenService>();
+
+// Inject the action filter (closed generic)
+services.AddScoped<AuthenticationFilter<TokenService>>();
+```
+
+#### 4.4 SQL Server Cache
 
 Use the `sql-cache` tool to create a table for caching.
 
@@ -383,6 +448,7 @@ This produces a table called `MySuperRadCache` with the following schema:
 | AbsoluteExpiration | datetimeoffset(7) | No |
 
 **Register:**
+
 ```csharp
 builder.Services.AddDistributedSqlServerCache(options =>
 {
@@ -392,7 +458,7 @@ builder.Services.AddDistributedSqlServerCache(options =>
 });
 ```
 
-#### Distributed SQL Server Cache (using Entity Framework)
+#### 4.5 Distributed SQL Server Cache (using Entity Framework)
 
 ```csharp
 services.AddDbContext<YourCacheDbContext>(options =>
@@ -417,21 +483,23 @@ Add the Filter to the Controller (via `ServiceFilter` or `TypeFilter`):
 ```csharp
 using Maurer.OktaFilter;
 using Maurer.OktaFilter.Interfaces;
+using Maurer.OktaFilter.Services;
+using Microsoft.Extensions.Caching.Distributed;
 
 [ApiController]
 [Route("mine")]
-[ServiceFilter(typeof(AuthenticationFilter<Maurer.OktaFilter.Services.TokenService>))]
+[ServiceFilter(typeof(AuthenticationFilter<TokenService>))]
 public class MyController : ControllerBase
 {
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<MyController> _logger;
     private readonly IDistributedCacheHelper _memoryCache;
+    private readonly IConfiguration _options_;
+    private readonly ILogger<MyController> _logger;
 
-    public MyController(ILogger<MyController> logger, IConfiguration configuration, IDistributedCacheHelper memoryCache)
+    public MyController(IDistributedCacheHelper memoryCache, IOptions<OktaOptions> options, ILogger<MyController> logger)
     {
-        _logger = logger;
-        _configuration = configuration;
         _memoryCache = memoryCache;
+        _options = options
+        _logger = logger;
     }
 
     // actions...
@@ -443,11 +511,11 @@ public class MyController : ControllerBase
 **As a Token object**
 ```csharp
 var tokenResponse = JsonConvert.DeserializeObject<Token>
-    ((await _memoryCache.Get(Maurer.OktaFilter.Settings.OAUTHKEY))!);
+    ((await _memoryCache.Get(_options.OAUTHKEY))!);
 ```
 
 **Just the token string**
 ```csharp
 var token = JsonConvert.DeserializeObject<Token>
-    ((await _memoryCache.Get(Maurer.OktaFilter.Settings.OAUTHKEY))!).AccessToken;
+    ((await _memoryCache.Get(_options.OAUTHKEY))!).AccessToken;
 ```

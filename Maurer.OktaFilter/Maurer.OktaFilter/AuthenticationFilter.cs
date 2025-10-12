@@ -1,4 +1,5 @@
 ﻿using Maurer.OktaFilter.Interfaces;
+using Maurer.OktaFilter.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Caching.Distributed;
@@ -16,28 +17,28 @@ namespace Maurer.OktaFilter
         private readonly ITokenService _tokenService;
         private readonly AsyncRetryPolicy<IActionResult> _retryPolicy;
         private readonly IDistributedCacheHelper _memoryCache;
+        private readonly OktaOptions _options;
 
-        private static DistributedCacheEntryOptions BuildCacheOptions() =>
-            new DistributedCacheEntryOptions
-                { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(Convert.ToInt32(Settings.TOKENLIFETIME)) };
+        private DistributedCacheEntryOptions BuildCacheOptions() =>
+            new () { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(Convert.ToInt32(_options.LIFETIME)) };
 
-
-        public AuthenticationFilter( ITokenService tokenService, IDistributedCacheHelper memoryCache, ILogger<AuthenticationFilter<TokenService>> logger)
+        public AuthenticationFilter( ITokenService tokenService, IDistributedCacheHelper memoryCache, OktaOptions options, ILogger<AuthenticationFilter<TokenService>> logger)
         {
             _logger = logger;
             _tokenService = tokenService;
             _memoryCache = memoryCache;
+            _options = options;
 
             _retryPolicy = Policy
                 .Handle<Exception>()
                 .OrResult<IActionResult>(response => IsAuthenticationFailure(response))
                 .RetryAsync(
-                    retryCount: Convert.ToInt32(Settings.RETRIES),
+                    retryCount: Convert.ToInt32(_options.RETRIES),
                     onRetryAsync: async (_, retryNumber) =>
                     {
                         _logger.LogWarning("Starting attempt #{Attempt} at re-authenticating...", retryNumber);
 
-                        var sleep = Convert.ToInt32(Settings.RETRYSLEEP);
+                        var sleep = Convert.ToInt32(_options.SLEEP);
 
                         if (sleep > 0)
                             await Task.Delay(TimeSpan.FromSeconds(sleep));
@@ -59,9 +60,7 @@ namespace Maurer.OktaFilter
         {
             try
             {
-                Settings.Validate();
-
-                if (!await _memoryCache.Has(Settings.OAUTHKEY))
+                if (!await _memoryCache.Has(_options.OAUTHKEY))
                 {
                     await _retryPolicy.ExecuteAsync(async () =>
                     {
@@ -70,7 +69,7 @@ namespace Maurer.OktaFilter
                         if (token is null || string.IsNullOrWhiteSpace(token.AccessToken))
                             throw new InvalidOperationException("Failed to acquire OKTA token.");
 
-                        await _memoryCache.Set(Settings.OAUTHKEY, JsonConvert.SerializeObject(token), BuildCacheOptions());
+                        await _memoryCache.Set(_options.OAUTHKEY, JsonConvert.SerializeObject(token), BuildCacheOptions());
 
                         return new StatusCodeResult(context.HttpContext.Response.StatusCode);
                     });

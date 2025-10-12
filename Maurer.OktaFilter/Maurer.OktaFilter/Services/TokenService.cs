@@ -12,6 +12,7 @@ namespace Maurer.OktaFilter.Services
     {
         private readonly ILogger<TokenService> _logger;
         private readonly HttpClient _httpClient;
+        private readonly OktaOptions _options;
 
         private Token? ParseToken(string responseBody)
         {
@@ -25,23 +26,24 @@ namespace Maurer.OktaFilter.Services
             }
         }
 
-        public TokenService(ILogger<TokenService> logger, HttpClient httpClient)
+        public TokenService(HttpClient httpClient, OktaOptions options, ILogger<TokenService> logger)
         {
             _logger = logger;
             _httpClient = httpClient;
+            _options = options;
         }
 
         public async Task<Token?> GetToken()
         {
             try
             {
-                Settings.Validate();
+                //Settings.Validate();
 
                 var credentials = Convert.ToBase64String
-                    (Encoding.UTF8.GetBytes($"{Settings.OAUTHUSER}:{Settings.OAUTHPASSWORD}"));
+                    (Encoding.UTF8.GetBytes($"{_options.USER}:{_options.PASSWORD}"));
 
                 //Restrict to HTTPS - Prevents accidental plaintext or SSRF to non-HTTPS
-                if (!Uri.TryCreate(Settings.OAUTHURL, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+                if (!Uri.TryCreate(_options.OAUTHURL, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
                     throw new InvalidOperationException("OAUTHURL must be an absolute HTTPS URL.");
 
                 //Create request that prefers HTTP/2; fail fast on non-2xx; don't buffer unnecessarily.
@@ -50,11 +52,10 @@ namespace Maurer.OktaFilter.Services
                     request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
                     request.Headers.Accept.Clear();
                     request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
                     request.Content = new FormUrlEncodedContent(new[]
                     {
-                        new KeyValuePair<string, string>("grant_type", Settings.GRANTTYPE!),
-                        new KeyValuePair<string, string>("scope", Settings.SCOPE!)
+                        new KeyValuePair<string, string>("grant_type", _options.GRANT!),
+                        new KeyValuePair<string, string>("scope", _options.SCOPE!)
                     });
 
                     //Create response that prefers non-buffering completion and status validation before reading body

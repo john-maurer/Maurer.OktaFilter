@@ -36,7 +36,12 @@ namespace UnitTesting.Assertions.Service
             return handler;
         }
 
-        private static TokenService MakeService(Action<HttpRequestMessage>? capture = null)
+        public UsingOktaService(OktaServiceFixture filter) : base(filter)
+        {
+
+        }
+
+        public TokenService MakeService(Action<HttpRequestMessage>? capture = null)
         {
             var handler = new MockHttpMessageHandler((HttpRequestMessage request, CancellationToken cancellationToken) =>
             {
@@ -53,12 +58,7 @@ namespace UnitTesting.Assertions.Service
 
             var logger = new Mock<ILogger<TokenService>>();
             var client = new HttpClient(handler);
-            return new TokenService(logger.Object, client);
-        }
-
-        public UsingOktaService(OktaServiceFixture filter) : base(filter)
-        {
-
+            return new TokenService(client, _fixture.Options, logger.Object);
         }
 
         [Fact]
@@ -69,7 +69,7 @@ namespace UnitTesting.Assertions.Service
 
             await service.GetToken();
 
-            Assert.Equal(new Uri(Maurer.OktaFilter.Settings.OAUTHURL), requestUri);
+            Assert.Equal(new Uri(_fixture.Options.OAUTHURL), requestUri);
         }
 
         [Fact]
@@ -92,7 +92,7 @@ namespace UnitTesting.Assertions.Service
             await service.GetToken();
 
             var expected = Convert.ToBase64String
-                (Encoding.UTF8.GetBytes($"{Maurer.OktaFilter.Settings.OAUTHUSER}:{Maurer.OktaFilter.Settings.OAUTHPASSWORD}"));
+                (Encoding.UTF8.GetBytes($"{_fixture.Options.USER}:{_fixture.Options.PASSWORD}"));
 
             Assert.Equal(expected, param);
         }
@@ -138,7 +138,7 @@ namespace UnitTesting.Assertions.Service
 
             await service.GetToken();
 
-            Assert.Contains($"grant_type={Uri.EscapeDataString(Maurer.OktaFilter.Settings.GRANTTYPE)}", form);
+            Assert.Contains($"grant_type={Uri.EscapeDataString(_fixture.Options.GRANT)}", form);
         }
 
         [Fact]
@@ -150,7 +150,7 @@ namespace UnitTesting.Assertions.Service
             await service.GetToken();
 
             // FormUrlEncodedContent encodes spaces as '+'
-            var expectedScope = Maurer.OktaFilter.Settings.SCOPE.Replace(" ", "+");
+            var expectedScope = _fixture.Options.SCOPE.Replace(" ", "+");
             Assert.Contains($"scope={expectedScope}", form);
         }
 
@@ -167,7 +167,7 @@ namespace UnitTesting.Assertions.Service
         {
             var logger = new Mock<ILogger<TokenService>>();
             var client = new HttpClient(GetMockedResponseWithStringContent("   \t  \r\n"));
-            var service = new TokenService(logger.Object, client);
+            var service = new TokenService(client, _fixture.Options, logger.Object);
 
             var token = await service.GetToken();
 
@@ -179,7 +179,7 @@ namespace UnitTesting.Assertions.Service
         {
             var logger = new Mock<ILogger<TokenService>>();
             var client = new HttpClient(GetMockedResponseWithStringContent("this is not json"));
-            var service = new TokenService(logger.Object, client);
+            var service = new TokenService(client, _fixture.Options, logger.Object);
 
             var token = await service.GetToken();
 
@@ -241,33 +241,31 @@ namespace UnitTesting.Assertions.Service
         [Fact]
         public async Task ShouldThrowOnNonHttpsUrl()
         {
-            var originalUrl = Maurer.OktaFilter.Settings.OAUTHURL;
-
-            try
+            var handler = new MockHttpMessageHandler((request, cancellationToken) =>
             {
-                // Force non-HTTPS to trigger the guard
-                Maurer.OktaFilter.Settings.OAUTHURL = "http://mockoauthserver.com/token";
-
-                var handler = new MockHttpMessageHandler((req, ct) =>
+                // This should never be hit because the method throws before sending
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    // This should never be hit because the method throws before sending
-                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-                    {
-                        Content = new StringContent("{}")
-                    });
+                    Content = new StringContent("{}")
                 });
+            });
 
-                var logger = new Mock<ILogger<TokenService>>();
-                var client = new HttpClient(handler);
-                var service = new TokenService(logger.Object, client);
-
-                await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetToken());
-            }
-            finally
+            var logger = new Mock<ILogger<TokenService>>();
+            var client = new HttpClient(handler);
+            var service = new TokenService(client, new OktaOptions
             {
-                // Restore for other tests
-                Maurer.OktaFilter.Settings.OAUTHURL = originalUrl;
-            }
+                USER = _fixture.Options.USER,
+                PASSWORD = _fixture.Options.PASSWORD,
+                OAUTHURL = "http://mockoauthserver.com/token", // Force non-HTTPS to trigger the guard
+                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                GRANT = _fixture.Options.GRANT,
+                SCOPE = _fixture.Options.SCOPE,
+                LIFETIME = _fixture.Options.LIFETIME,
+                RETRIES = 0,
+                SLEEP = 0
+            }, logger.Object);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetToken());
         }
     }
 }

@@ -26,24 +26,14 @@ namespace UnitTesting.Assertions.Filter
         [Fact]
         public async Task EnsuresTokenOnCacheMiss_ThenCallsNextOnce()
         {
-            var OG_OAUTHKEY = Maurer.OktaFilter.Settings.OAUTHKEY;
-            var OG_RETRIES = Maurer.OktaFilter.Settings.RETRIES;
-            var OG_RETRYSLEEP = Maurer.OktaFilter.Settings.RETRYSLEEP;
-            var OG_TOKENLIFETIME = Maurer.OktaFilter.Settings.TOKENLIFETIME;
-
-            Maurer.OktaFilter.Settings.OAUTHKEY = "OKTA-TOKEN";
-            Maurer.OktaFilter.Settings.RETRIES = "0";
-            Maurer.OktaFilter.Settings.RETRYSLEEP = "0";
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = "30";
-
             string? cachedValue = null;
             var cacheHelper = new Mock<IDistributedCacheHelper>();
             var tokenService = new Mock<ITokenService>();
             DistributedCacheEntryOptions? cachedOptions = null;
 
-            cacheHelper.Setup(cache => cache.Has(Maurer.OktaFilter.Settings.OAUTHKEY)).ReturnsAsync(false);
+            cacheHelper.Setup(cache => cache.Has(_fixture.Options.OAUTHKEY)).ReturnsAsync(false);
             cacheHelper.Setup(cache => cache.Set(
-                    Maurer.OktaFilter.Settings.OAUTHKEY,
+                    _fixture.Options.OAUTHKEY,
                     It.IsAny<object>(),
                     It.IsAny<DistributedCacheEntryOptions>()))
                 .Callback<string, object, DistributedCacheEntryOptions>((key, value, options) =>
@@ -56,7 +46,7 @@ namespace UnitTesting.Assertions.Filter
             
             tokenService.Setup(service => service.GetToken()).ReturnsAsync(AuthenticationFilterFixture.SampleToken());
 
-            var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, TokenServiceLogger);
+            var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, _fixture.Options, TokenServiceLogger);
             var context = AuthenticationFilterFixture.MockExecutingContext();
             var nextCount = 0;
 
@@ -68,32 +58,27 @@ namespace UnitTesting.Assertions.Filter
             Assert.NotNull(cachedValue);
             Assert.Contains("\"access_token\":\"mocked_token\"", cachedValue); // serialized Token
             Assert.NotNull(cachedOptions);
-
-            Maurer.OktaFilter.Settings.OAUTHKEY = OG_OAUTHKEY;
-            Maurer.OktaFilter.Settings.RETRIES = OG_RETRIES;
-            Maurer.OktaFilter.Settings.RETRYSLEEP = OG_RETRYSLEEP;
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = OG_TOKENLIFETIME;
         }
 
         [Fact]
         public async Task DoesNotFetchTokenOnCacheHit_CallsNextOnce()
         {
-            var OG_OAUTHKEY = Maurer.OktaFilter.Settings.OAUTHKEY;
-            var OG_RETRIES = Maurer.OktaFilter.Settings.RETRIES;
-            var OG_RETRYSLEEP = Maurer.OktaFilter.Settings.RETRYSLEEP;
-            var OG_TOKENLIFETIME = Maurer.OktaFilter.Settings.TOKENLIFETIME;
-
-            Maurer.OktaFilter.Settings.OAUTHKEY = "OKTA-TOKEN";
-            Maurer.OktaFilter.Settings.RETRIES = "0";
-            Maurer.OktaFilter.Settings.RETRYSLEEP = "0";
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = "30";
-
             var cacheHelper = new Mock<IDistributedCacheHelper>();
 
-            cacheHelper.Setup(cache => cache.Has(Maurer.OktaFilter.Settings.OAUTHKEY)).ReturnsAsync(true);
+            cacheHelper.Setup(cache => cache.Has(_fixture.Options.OAUTHKEY)).ReturnsAsync(true);
 
             var tokenService = new Mock<ITokenService>();
-            var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, TokenServiceLogger);
+            var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, new OktaOptions { 
+                USER = _fixture.Options.USER,
+                PASSWORD = _fixture.Options.PASSWORD,
+                OAUTHURL = _fixture.Options.OAUTHURL,
+                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                GRANT = _fixture.Options.GRANT,
+                SCOPE = _fixture.Options.SCOPE,
+                LIFETIME = _fixture.Options.LIFETIME,
+                RETRIES = 0,
+                SLEEP = 0
+            }, TokenServiceLogger);
             var context = AuthenticationFilterFixture.MockExecutingContext();
             var nextCount = 0;
             ActionExecutionDelegate next = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(context, 200)(); };
@@ -103,31 +88,16 @@ namespace UnitTesting.Assertions.Filter
             tokenService.Verify(service => service.GetToken(), Times.Never);
 
             Assert.Equal(1, nextCount);
-
-            Maurer.OktaFilter.Settings.OAUTHKEY = OG_OAUTHKEY;
-            Maurer.OktaFilter.Settings.RETRIES = OG_RETRIES;
-            Maurer.OktaFilter.Settings.RETRYSLEEP = OG_RETRYSLEEP;
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = OG_TOKENLIFETIME;
         }
 
         [Fact]
         public async Task RetriesTokenAcquisition_WhenServiceThrows_ThenSucceeds()
         {
-            var OG_OAUTHKEY = Maurer.OktaFilter.Settings.OAUTHKEY;
-            var OG_RETRIES = Maurer.OktaFilter.Settings.RETRIES;
-            var OG_RETRYSLEEP = Maurer.OktaFilter.Settings.RETRYSLEEP;
-            var OG_TOKENLIFETIME = Maurer.OktaFilter.Settings.TOKENLIFETIME;
-
-            Maurer.OktaFilter.Settings.OAUTHKEY = "OKTA-TOKEN";
-            Maurer.OktaFilter.Settings.RETRIES = "2";      // 2 retries => 3 total attempts
-            Maurer.OktaFilter.Settings.RETRYSLEEP = "0";
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = "30";
-
             var cacheHelper = new Mock<IDistributedCacheHelper>();
             var tokenService = new Mock<ITokenService>();
             var calls = 0;
             
-            cacheHelper.Setup(cache => cache.Has(Maurer.OktaFilter.Settings.OAUTHKEY)).ReturnsAsync(false);
+            cacheHelper.Setup(cache => cache.Has(_fixture.Options.OAUTHKEY)).ReturnsAsync(false);
             cacheHelper.Setup(cache => cache.Set(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<DistributedCacheEntryOptions>()))
                  .Returns(Task.CompletedTask);
 
@@ -139,7 +109,18 @@ namespace UnitTesting.Assertions.Filter
                 return AuthenticationFilterFixture.SampleToken();
             });
 
-            var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, TokenServiceLogger);
+            var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, new OktaOptions
+            {
+                USER = _fixture.Options.USER,
+                PASSWORD = _fixture.Options.PASSWORD,
+                OAUTHURL = _fixture.Options.OAUTHURL,
+                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                GRANT = _fixture.Options.GRANT,
+                SCOPE = _fixture.Options.SCOPE,
+                LIFETIME = _fixture.Options.LIFETIME,
+                RETRIES = 2,
+                SLEEP = 0
+            }, TokenServiceLogger);
             var context = AuthenticationFilterFixture.MockExecutingContext();
             var nextCount = 0;
             ActionExecutionDelegate next = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(context, 200)(); };
@@ -148,34 +129,30 @@ namespace UnitTesting.Assertions.Filter
 
             Assert.Equal(3, calls); // 1 try + 2 retries
             Assert.Equal(1, nextCount);
-
-            Maurer.OktaFilter.Settings.OAUTHKEY = OG_OAUTHKEY;
-            Maurer.OktaFilter.Settings.RETRIES = OG_RETRIES;
-            Maurer.OktaFilter.Settings.RETRYSLEEP = OG_RETRYSLEEP;
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = OG_TOKENLIFETIME;
         }
 
         [Fact]
         public async Task ThrowsWhenTokenInvalid_AndDoesNotCallNext()
         {
-            var OG_OAUTHKEY = Maurer.OktaFilter.Settings.OAUTHKEY;
-            var OG_RETRIES = Maurer.OktaFilter.Settings.RETRIES;
-            var OG_RETRYSLEEP = Maurer.OktaFilter.Settings.RETRYSLEEP;
-            var OG_TOKENLIFETIME = Maurer.OktaFilter.Settings.TOKENLIFETIME;
-
-            Maurer.OktaFilter.Settings.OAUTHKEY = "OKTA-TOKEN";
-            Maurer.OktaFilter.Settings.RETRIES = "0";
-            Maurer.OktaFilter.Settings.RETRYSLEEP = "0";
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = "30";
-
             var cacheHelper = new Mock<IDistributedCacheHelper>();
             var tokenService = new Mock<ITokenService>();
 
-            cacheHelper.Setup(cache => cache.Has(Maurer.OktaFilter.Settings.OAUTHKEY)).ReturnsAsync(false);
+            cacheHelper.Setup(cache => cache.Has(_fixture.Options.OAUTHKEY)).ReturnsAsync(false);
 
             tokenService.Setup(service => service.GetToken()).ReturnsAsync(new Token { AccessToken = "" }); // invalid
 
-            var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, TokenServiceLogger);
+            var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, new OktaOptions
+            {
+                USER = _fixture.Options.USER,
+                PASSWORD = _fixture.Options.PASSWORD,
+                OAUTHURL = _fixture.Options.OAUTHURL,
+                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                GRANT = _fixture.Options.GRANT,
+                SCOPE = _fixture.Options.SCOPE,
+                LIFETIME = _fixture.Options.LIFETIME,
+                RETRIES = 0,
+                SLEEP = 0
+            }, TokenServiceLogger);
             var context = AuthenticationFilterFixture.MockExecutingContext();
             var nextCount = 0;
             ActionExecutionDelegate next = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(context, 200)(); };
@@ -183,32 +160,17 @@ namespace UnitTesting.Assertions.Filter
             await Assert.ThrowsAsync<InvalidOperationException>(() => filter.OnActionExecutionAsync(context, next));
 
             Assert.Equal(0, nextCount);
-
-            Maurer.OktaFilter.Settings.OAUTHKEY = OG_OAUTHKEY;
-            Maurer.OktaFilter.Settings.RETRIES = OG_RETRIES;
-            Maurer.OktaFilter.Settings.RETRYSLEEP = OG_RETRYSLEEP;
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = OG_TOKENLIFETIME;
         }
 
         [Fact]
         public async Task PreAction401CausesSpuriousRetries_DueToResultPredicate()
         {
-            var OG_OAUTHKEY = Maurer.OktaFilter.Settings.OAUTHKEY;
-            var OG_RETRIES = Maurer.OktaFilter.Settings.RETRIES;
-            var OG_RETRYSLEEP = Maurer.OktaFilter.Settings.RETRYSLEEP;
-            var OG_TOKENLIFETIME = Maurer.OktaFilter.Settings.TOKENLIFETIME;
-
-            Maurer.OktaFilter.Settings.OAUTHKEY = "OKTA-TOKEN";
-            Maurer.OktaFilter.Settings.RETRIES = "2";
-            Maurer.OktaFilter.Settings.RETRYSLEEP = "0";
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = "30";
-
             var cacheHelper = new Mock<IDistributedCacheHelper>();
             var tokenService = new Mock<ITokenService>();
             var context = AuthenticationFilterFixture.MockExecutingContext(initialStatus: 401);
             var nextCount = 0;
 
-            cacheHelper.Setup(cache => cache.Has(Maurer.OktaFilter.Settings.OAUTHKEY)).ReturnsAsync(false);
+            cacheHelper.Setup(cache => cache.Has(_fixture.Options.OAUTHKEY)).ReturnsAsync(false);
             cacheHelper.Setup(cache => cache.Set(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<DistributedCacheEntryOptions>()))
                  .Returns(Task.CompletedTask);
 
@@ -217,7 +179,18 @@ namespace UnitTesting.Assertions.Filter
 
             //Pre-set a 401 on the response BEFORE action executes.
             ActionExecutionDelegate next = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(context, 200)(); };
-            var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, TokenServiceLogger);
+            var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, new OktaOptions
+            {
+                USER = _fixture.Options.USER,
+                PASSWORD = _fixture.Options.PASSWORD,
+                OAUTHURL = _fixture.Options.OAUTHURL,
+                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                GRANT = _fixture.Options.GRANT,
+                SCOPE = _fixture.Options.SCOPE,
+                LIFETIME = _fixture.Options.LIFETIME,
+                RETRIES = 2,
+                SLEEP = 0
+            }, TokenServiceLogger);
             var calls = 0;
 
             tokenService.Reset();
@@ -233,84 +206,67 @@ namespace UnitTesting.Assertions.Filter
             //Reality (bug): result predicate sees 401 and retries token acquisition.
             Assert.True(calls > 1); //exposes the bug
             Assert.Equal(1, nextCount);
-
-            Maurer.OktaFilter.Settings.OAUTHKEY = OG_OAUTHKEY;
-            Maurer.OktaFilter.Settings.RETRIES = OG_RETRIES;
-            Maurer.OktaFilter.Settings.RETRYSLEEP = OG_RETRYSLEEP;
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = OG_TOKENLIFETIME;
         }
 
         [Fact]
         public async Task CacheExpires_ThenFilterFetchesNewToken()
         {
-            // preserve globals
-            var OG_OAUTHKEY = Maurer.OktaFilter.Settings.OAUTHKEY;
-            var OG_RETRIES = Maurer.OktaFilter.Settings.RETRIES;
-            var OG_RETRYSLEEP = Maurer.OktaFilter.Settings.RETRYSLEEP;
-            var OG_TOKENLIFETIME = Maurer.OktaFilter.Settings.TOKENLIFETIME;
+            // fake time + real helper over fake IDistributedCache
+            var clock = new FakeTimeProvider(new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero));
+            var cacheHelper = new DistributedCacheHelper(new MockCache(clock));
 
-            // minimal settings your filter Validate() expects for this path
-            Maurer.OktaFilter.Settings.OAUTHKEY = "OKTA-TOKEN";
-            Maurer.OktaFilter.Settings.RETRIES = "0";
-            Maurer.OktaFilter.Settings.RETRYSLEEP = "0";
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = "1"; // 1 minute TTL
+            // token service returns first, then second
+            var tokenService = new Mock<ITokenService>();
+            tokenService
+                .SetupSequence(service => service.GetToken())
+                .ReturnsAsync(new Token { AccessToken = "first-token", TokenType = "Bearer", ExpiresIn = "0", Scope = _fixture.Options.SCOPE })
+                .ReturnsAsync(new Token { AccessToken = "second-token", TokenType = "Bearer", ExpiresIn = "0", Scope = _fixture.Options.SCOPE });
 
-            try
+            var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper, new OktaOptions
             {
-                // fake time + real helper over fake IDistributedCache
-                var clock = new FakeTimeProvider(new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero));
-                IDistributedCache dist = new MockCache(clock);
-                var cacheHelper = new DistributedCacheHelper(dist);
+                USER = _fixture.Options.USER,
+                PASSWORD = _fixture.Options.PASSWORD,
+                OAUTHURL = _fixture.Options.OAUTHURL,
+                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                GRANT = _fixture.Options.GRANT,
+                SCOPE = _fixture.Options.SCOPE,
+                LIFETIME = 1,
+                RETRIES = 0,
+                SLEEP = 1
+            }, NullLogger<AuthenticationFilter<TokenService>>.Instance);
 
-                // token service returns first, then second
-                var tokenService = new Mock<ITokenService>();
-                tokenService
-                    .SetupSequence(service => service.GetToken())
-                    .ReturnsAsync(new Token { AccessToken = "first-token", TokenType = "Bearer", ExpiresIn = "1800", Scope = "openid profile" })
-                    .ReturnsAsync(new Token { AccessToken = "second-token", TokenType = "Bearer", ExpiresIn = "1800", Scope = "openid profile" });
+            // 1) first request: no cache → fetch and cache "first-token"
+            var context1 = AuthenticationFilterFixture.MockExecutingContext();
+            var nextCount = 0;
+            ActionExecutionDelegate next = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(context1, 200)(); };
 
-                var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper, NullLogger<AuthenticationFilter<TokenService>>.Instance);
+            await filter.OnActionExecutionAsync(context1, next);
+            tokenService.Verify(s => s.GetToken(), Times.Once);
 
-                // 1) first request: no cache → fetch and cache "first-token"
-                var ctx1 = AuthenticationFilterFixture.MockExecutingContext();
-                var nextCount = 0;
-                ActionExecutionDelegate next = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(ctx1, 200)(); };
+            var cached1 = await cacheHelper.Get(_fixture.Options.OAUTHKEY);
+            Assert.NotNull(cached1);
+            Assert.Contains("first-token", cached1!);
 
-                await filter.OnActionExecutionAsync(ctx1, next);
-                tokenService.Verify(s => s.GetToken(), Times.Once);
+            // 2) before expiry: should be cache hit, no new fetch
+            var context2 = AuthenticationFilterFixture.MockExecutingContext();
+            ActionExecutionDelegate next2 = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(context2, 200)(); };
+            await filter.OnActionExecutionAsync(context2, next2);
 
-                var cached1 = await cacheHelper.Get(Maurer.OktaFilter.Settings.OAUTHKEY);
-                Assert.NotNull(cached1);
-                Assert.Contains("first-token", cached1!);
+            tokenService.Verify(s => s.GetToken(), Times.Once); // still 1 call
 
-                // 2) before expiry: should be cache hit, no new fetch
-                var ctx2 = AuthenticationFilterFixture.MockExecutingContext();
-                ActionExecutionDelegate next2 = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(ctx2, 200)(); };
-                await filter.OnActionExecutionAsync(ctx2, next2);
+            // 3) advance beyond TTL and call again → cache entry self-expires, filter refetches
+            clock.Advance(TimeSpan.FromMinutes(1).Add(TimeSpan.FromSeconds(1)));
 
-                tokenService.Verify(s => s.GetToken(), Times.Once); // still 1 call
+            var context3 = AuthenticationFilterFixture.MockExecutingContext();
+            ActionExecutionDelegate next3 = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(context3, 200)(); };
+            await filter.OnActionExecutionAsync(context3, next3);
 
-                // 3) advance beyond TTL and call again → cache entry self-expires, filter refetches
-                clock.Advance(TimeSpan.FromMinutes(1).Add(TimeSpan.FromSeconds(1)));
+            tokenService.Verify(service => service.GetToken(), Times.Exactly(2));
+            var cached2 = await cacheHelper.Get(_fixture.Options.OAUTHKEY);
+            Assert.NotNull(cached2);
+            Assert.Contains("second-token", cached2!);
 
-                var ctx3 = AuthenticationFilterFixture.MockExecutingContext();
-                ActionExecutionDelegate next3 = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(ctx3, 200)(); };
-                await filter.OnActionExecutionAsync(ctx3, next3);
-
-                tokenService.Verify(s => s.GetToken(), Times.Exactly(2));
-                var cached2 = await cacheHelper.Get(Maurer.OktaFilter.Settings.OAUTHKEY);
-                Assert.NotNull(cached2);
-                Assert.Contains("second-token", cached2!);
-
-                Assert.Equal(3, nextCount); // next called once per request
-            }
-            finally
-            {
-                Maurer.OktaFilter.Settings.OAUTHKEY = OG_OAUTHKEY;
-                Maurer.OktaFilter.Settings.RETRIES = OG_RETRIES;
-                Maurer.OktaFilter.Settings.RETRYSLEEP = OG_RETRYSLEEP;
-                Maurer.OktaFilter.Settings.TOKENLIFETIME = OG_TOKENLIFETIME;
-            }
+            Assert.Equal(3, nextCount); // next called once per request
         }
     }
 }

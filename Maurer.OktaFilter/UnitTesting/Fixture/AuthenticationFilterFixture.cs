@@ -21,7 +21,20 @@ namespace UnitTesting.Fixture
         }
 
         public TestableAuthenticationFilter GetAuthenticationFilterContext(TokenService tokenService, IDistributedCacheHelper memoryCache) =>
-            new TestableAuthenticationFilter(tokenService, memoryCache, new Mock<ILogger<AuthenticationFilter<TokenService>>>().Object);
+            new TestableAuthenticationFilter(tokenService, memoryCache, Options, new Mock<ILogger<AuthenticationFilter<TokenService>>>().Object);
+
+        public OktaOptions Options { get; set; } = new OktaOptions
+        {
+            OAUTHURL = "https://mockoauthserver.com/token",
+            USER = "testuser",
+            PASSWORD = "testpassword",
+            OAUTHKEY = "OKTA-TOKEN",
+            GRANT = "client_credentials",
+            SCOPE = "openid profile email",
+            SLEEP = 30,
+            RETRIES = 3,
+            LIFETIME = 30,
+        };
 
         public static Token SampleToken() => new Token
         {

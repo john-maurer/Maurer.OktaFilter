@@ -14,7 +14,7 @@ namespace UnitTesting.Fixture
             {
                 HttpResponseMessage result;
 
-                if (request!.RequestUri!.AbsoluteUri == Maurer.OktaFilter.Settings.OAUTHURL)
+                if (request!.RequestUri!.AbsoluteUri == Options.OAUTHURL)
                 {
                     var response = new HttpResponseMessage(status);
                     response.Content = new StringContent(payload!);
@@ -23,7 +23,7 @@ namespace UnitTesting.Fixture
                 else
                 {
                     var response = new HttpResponseMessage(HttpStatusCode.NotFound);
-                    response.Content = new StringContent($"Bad set-up in OKTA service fixture; the target URL does not match '{Maurer.OktaFilter.Settings.OAUTHURL}'.");
+                    response.Content = new StringContent($"Bad set-up in OKTA service fixture; the target URL does not match '{Options.OAUTHURL}'.");
                     result = response;
                 }
 
@@ -32,21 +32,11 @@ namespace UnitTesting.Fixture
 
         protected override void Arrange(params object[] parameters)
         {
-            Maurer.OktaFilter.Settings.OAUTHURL = "https://mockoauthserver.com/token";
-            Maurer.OktaFilter.Settings.OAUTHUSER = "testuser";
-            Maurer.OktaFilter.Settings.OAUTHPASSWORD = "testpassword";
-            Maurer.OktaFilter.Settings.OAUTHKEY = "OKTA-TOKEN";
-            Maurer.OktaFilter.Settings.GRANTTYPE = "client_credentials";
-            Maurer.OktaFilter.Settings.SCOPE = "openid profile email";
-            Maurer.OktaFilter.Settings.RETRYSLEEP = "30";
-            Maurer.OktaFilter.Settings.RETRIES = "3";
-            Maurer.OktaFilter.Settings.TOKENLIFETIME = "30";
-
             var mockLogger = new Mock<ILogger<TokenService>>();
             var token = new Token { 
                 AccessToken = "mocked_token",
-                ExpiresIn = Maurer.OktaFilter.Settings.TOKENLIFETIME,
-                Scope = Maurer.OktaFilter.Settings.SCOPE,
+                ExpiresIn = Options.LIFETIME.ToString(),
+                Scope = Options.SCOPE,
                 TokenType = "bearer"
             };
 
@@ -55,13 +45,26 @@ namespace UnitTesting.Fixture
             var mockClientForbidden = new HttpClient(MockMessageHandler(HttpStatusCode.Forbidden, "Forbidden: Insufficient permissions to access this resource."));
             var mockClientProxyRequired = new HttpClient(MockMessageHandler((HttpStatusCode)407, "Proxy Authentication Required: Unable to authenticate with proxy server."));
 
-            ContextServiceOK = new TokenService(mockLogger.Object, mockClientOK);
-            ContextServiceUnauthorized = new TokenService(mockLogger.Object, mockClientUnauthorized);
-            ContextServiceForbidden = new TokenService(mockLogger.Object, mockClientForbidden);
-            ContextServiceProxyRequired = new TokenService(mockLogger.Object, mockClientProxyRequired);
+            ContextServiceOK = new TokenService(mockClientOK, Options, mockLogger.Object);
+            ContextServiceUnauthorized = new TokenService(mockClientUnauthorized, Options, mockLogger.Object);
+            ContextServiceForbidden = new TokenService(mockClientForbidden, Options, mockLogger.Object);
+            ContextServiceProxyRequired = new TokenService(mockClientProxyRequired, Options, mockLogger.Object);
         }
 
         public OktaServiceFixture() => Arrange();
+
+        public OktaOptions Options { get; set; } = new OktaOptions
+        {
+            OAUTHURL = "https://mockoauthserver.com/token",
+            USER = "testuser",
+            PASSWORD = "testpassword",
+            OAUTHKEY = "OKTA-TOKEN",
+            GRANT = "client_credentials",
+            SCOPE = "openid profile email",
+            SLEEP = 30,
+            RETRIES = 3,
+            LIFETIME = 30,
+        };
 
         public TokenService ContextServiceOK { get; set; }
         public TokenService ContextServiceUnauthorized{ get; set; }
