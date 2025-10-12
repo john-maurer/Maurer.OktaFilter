@@ -8,7 +8,7 @@ using System.Text;
 using UnitTesting.Fixture;
 using UnitTesting.Harness;
 
-namespace UnitTesting.Assertions.Service
+namespace UnitTesting.Assertions
 {
     public class UsingOktaService : OktaServiceHarness
     {
@@ -43,7 +43,7 @@ namespace UnitTesting.Assertions.Service
 
         public TokenService MakeService(Action<HttpRequestMessage>? capture = null)
         {
-            var handler = new MockHttpMessageHandler((HttpRequestMessage request, CancellationToken cancellationToken) =>
+            var handler = new MockHttpMessageHandler((request, cancellationToken) =>
             {
                 capture?.Invoke(request);
 
