@@ -1,11 +1,12 @@
-﻿using System.Net;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Maurer.OktaFilter.Helpers;
+﻿using Maurer.OktaFilter.Helpers;
 using Maurer.OktaFilter.Interfaces;
 using Maurer.OktaFilter.Models;
 using Maurer.OktaFilter.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using System.Net;
 
 namespace Maurer.OktaFilter
 {
@@ -158,6 +159,52 @@ namespace Maurer.OktaFilter
 
             configureHttp?.Invoke(services.AddOktaHttpClient());
             services.AddOktaCommon();
+            return services;
+        }
+
+        /// <summary>
+        /// Generic keyvault binding; requires custom cache (i.e. AddMemoryCache or AddDistributedMemoryCache or AddStackExchangeRedisCache or AddDistributedSqlServerCache) and optional HttpClient.
+        /// </summary>
+        /// <param name="services">Specifies the contract for a collection of service descriptors.</param>
+        /// <param name="configuration">wire up TokenService + filter, and allow optional HttpClient customization</param>
+        /// <param name="configureCache"></param>
+        /// <param name="clientBuilder">HttpClient builder for HttpFactory</param>
+        /// <returns>Service collection modified with a custom </returns>
+        /// <exception cref="ArgumentNullException"></exception>
+
+        public static IServiceCollection AddOktaFilter(this IServiceCollection services, IConfiguration configuration, Action<IServiceCollection> configureCache, Action<IHttpClientBuilder>? clientBuilder = null)
+        {
+            if (services is null) throw new ArgumentNullException(nameof(services));
+            if (configuration is null) throw new ArgumentNullException(nameof(configuration));
+
+            // 1) Bind & validate typed options
+            services.AddOptions<OktaOptions>()
+                .Bind(configuration.GetSection("Okta"))
+                .ValidateDataAnnotations()
+                .Validate(oktaOptions => Uri.TryCreate(oktaOptions.OAUTHURL, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps,
+                          "OAUTHURL must be an absolute HTTPS URL.")
+                .Validate(o => o.LIFETIME >= 1, "LIFETIME must be >= 1 minute.")
+                .ValidateOnStart();
+
+            // Expose validated OktaOptions.Value because TokenService takes OktaOptions (not IOptions<>)
+            services.AddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<OktaOptions>>().Value);
+
+            // 2) Caller supplies the distributed cache registration (no provider deps here)
+            configureCache?.Invoke(services);
+
+            // 3) Typed HttpClient for ITokenService with sane defaults; allow customization
+            var http = services.AddHttpClient<ITokenService, TokenService>()
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                {
+                    AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+                });
+
+            clientBuilder?.Invoke(http);
+
+            // 4) Common helpers and the closed-generic filter
+            services.TryAddSingleton<IDistributedCacheHelper, DistributedCacheHelper>();
+            services.AddScoped<AuthenticationFilter<TokenService>>();
+
             return services;
         }
     }

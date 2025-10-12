@@ -10,23 +10,39 @@
 
 ## Table of Contents
 
+## Table of Contents
+
 - [Intent](#intent)
 - [Dependencies](#dependencies)
 - [Why use it?](#why-use-it)
 - [When to Use](#when-to-use)
 - [Components](#components)
 - [Interactions](#interactions)
+  - [Class relationships](#class-relationships)
+  - [Sequence — request with cache miss (token acquired then proceed)](#sequence--request-with-cache-miss-token-acquired-then-proceed)
+  - [Sequence — request with cache hit (no network call)](#sequence--request-with-cache-hit-no-network-call)
+  - [Sequence — acquisition retry and failure (high level)](#sequence--acquisition-retry-and-failure-high-level)
 - [Outcomes](#outcomes)
 - [Implementation Guide](#implementation-guide)
   - [1. Configure Secrets in Azure Key Vault and Export to Azure Configuration Services](#1-configure-secrets-in-azure-key-vault-and-export-to-azure-configuration-services)
   - [2. Install the Package](#2-install-the-package)
   - [3. Configure Settings](#3-configure-settings)
+    - [3.1 Configure Settings with Azure Key Vault (recommended for secrets)](#31-configure-settings-with-azure-key-vault-recommended-for-secrets)
+      - [3.1.1: NuGet (in your app)](#311-nuget-in-your-app)
+      - [3.1.2: Secret Naming Convention - Demonstration Purposes](#312-secret-naming-convention---demonstration-purposes)
+      - [3.2.1: Step 1 - Dependencies](#321-step-1---dependencies)
+      - [3.2.2: Step 2 - Read `keyvault` URI](#322-step-2---read-keyvault-uri)
+      - [3.2.3: Step 3 - Bind `OktaOptions`](#323-step-3---bind-oktaoptions)
+      - [3.2.4: Step 4 - Register OktaFilter](#324-step-4---register-oktafilter)
   - [4. Configure DI in Startup](#4-configure-di-in-startup)
-  - [Using the Filter in a Controller](#using-the-filter-in-a-controller)
-  - [Alternative Caching Providers](#alternative-caching-providers)
-    - [Redis Cache](#redis-cache)
-    - [SQL Server Cache](#sql-server-cache)
-    - [Distributed SQL Server Cache (using Entity Framework)](#distributed-sql-server-cache-using-entity-framework)
+    - [4.1 Minimal (In-Memory Cache, typed HttpClient, options bound)](#41-minimal-in-memory-cache-typed-httpclient-options-bound)
+      - [4.1.1 Code-Only options (no `IConfiguration`)](#411-code-only-options-no-iconfiguration)
+    - [4.2 Custom HttpClient (timeouts, decompression)](#42-custom-httpclient-timeouts-decompression)
+    - [4.3 Redis Cache](#43-redis-cache)
+    - [4.4 SQL Server Cache](#44-sql-server-cache)
+    - [4.5 Distributed SQL Server Cache (using Entity Framework)](#45-distributed-sql-server-cache-using-entity-framework)
+- [Using the Filter in a Controller](#using-the-filter-in-a-controller)
+  - [Extracting the Token](#extracting-the-token)
 
 ---
 
@@ -263,8 +279,8 @@ end
 ## Outcomes
 
 - **Lower cost & latency** — tokens are cached and reused across requests (and across instances with a distributed cache), reducing round-trips to OKTA.
-- **Resilience by default** — transient auth failures (401/403/407) are retried using Polly; retry count and delay are controlled via `Settings.RETRIES` and `Settings.RETRYSLEEP`.
-- **Predictable expiration** — cache entries honor `Settings.TOKENLIFETIME`; a new token is acquired automatically on cache miss or expiry.
+- **Resilience by default** — transient auth failures (401/403/407) are retried using Polly; retry count and delay are controlled via `Settings.RETRIES` and `Settings.SLEEP`.
+- **Predictable expiration** — cache entries honor `Settings.LIFETIME`; a new token is acquired automatically on cache miss or expiry.
 - **Simple composition** — the `IAsyncActionFilter` encapsulates the handshake so controllers stay focused on business logic; everything is wired via DI.
 - **Pluggable storage** — works with in-memory, Redis, or SQL Server distributed cache behind `IDistributedCache`.
 - **Security baseline** — `TokenService` enforces HTTPS token endpoints and uses typed JSON parsing; scopes and grant type are explicit via settings.
@@ -304,7 +320,7 @@ Use the typed options `OktaOptions` to configure the filter and how OKTA tokens 
 - **SCOPE** – The permissions requested when obtaining an access token. See [Scopes](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc).
 - **RETRIES** – The number of attempts the filter should make to acquire an OKTA token.  
 - **SLEEP** – The number in seconds to wait in between retry attempts.  
-- **LIFETIME** – The lifetime in minutes of the OKTA token, should not exceed 55 minutes.
+- **LIFETIME** – The lifetime in seconds of the OKTA token, should not exceed 55 minutes.
 
 ```json
 {
@@ -320,6 +336,82 @@ Use the typed options `OktaOptions` to configure the filter and how OKTA tokens 
     "LIFETIME": 30
   }
 }
+```
+
+#### 3.1 Configure Settings with Azure Key Vault (recommended for secrets)
+
+Azure Key Vault can be used to store `OktaOptions` values.
+
+##### 3.1.1: NuGet (in your app)
+
+* `Azure.Identity`
+* `Azure.Security.KeyVault.Secrets`
+* `Azure.Extensions.AspNetCore.Configuration.Secrets`
+
+##### 3.1.2: Secret Naming Convention - Demonstration Purposes
+
+Key Vault secret names map to configuration keys using -- as the section separator. So, `Okta:USER ⇒ Okta--USER`, `Okta:PASSWORD ⇒ Okta--PASSWORD`, etc.  
+
+Add to your `keyvault` values to the **OKTA** secrets.
+
+```bash
+az keyvault secret set --vault-name <vault> --name Okta--USER --value <client_id>
+az keyvault secret set --vault-name <vault> --name Okta--PASSWORD --value <client_secret>
+az keyvault secret set --vault-name <vault> --name Okta--OAUTHURL --value https://your-okta-domain/oauth2/v1/token
+az keyvault secret set --vault-name <vault> --name Okta--OAUTHKEY --value OKTA-TOKEN
+az keyvault secret set --vault-name <vault> --name Okta--GRANT --value client_credentials
+az keyvault secret set --vault-name <vault> --name Okta--SCOPE --value "openid profile email"
+az keyvault secret set --vault-name <vault> --name Okta--RETRIES --value 2
+az keyvault secret set --vault-name <vault> --name Okta--SLEEP --value 1
+az keyvault secret set --vault-name <vault> --name Okta--LIFETIME --value 30
+```
+
+##### 3.2.1: Step 1 - Dependencies
+
+The following Azure libraries are required:
+
+```csharp
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using Azure.Extensions.AspNetCore.Configuration.Secrets;
+
+```
+
+##### 3.2.2: Step 2 - Read `keyvault` URI
+
+The `keyvault` URI can be read from an app setting or environment Variable.
+
+```csharp
+var keyVaultUri = builder.Configuration["KeyVaultUri"]; // e.g., "https://my-vault.vault.azure.net/"
+
+if (!string.IsNullOrWhiteSpace(keyVaultUri))
+{
+    var client = new SecretClient(new Uri(keyVaultUri), new DefaultAzureCredential());
+    builder.Configuration.AddAzureKeyVault(client, new KeyVaultSecretManager());
+}
+```
+
+##### 3.2.3: Step 3 - Bind `OktaOptions`
+
+Bind `OktaOptions` with `keyvault` values included.
+
+```csharp
+builder.Services.AddOptions<OktaOptions>()
+    .Bind(builder.Configuration.GetSection("Okta"))
+    .ValidateDataAnnotations()
+    .Validate(options => Uri.TryCreate(options.OAUTHURL, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps, "OAUTHURL must be an absolute HTTPS URL.")
+    .ValidateOnStart();
+```
+
+##### 3.2.4: Step 4 - Register OktaFilter
+
+Register OktaFilter as you prefer (cache choice is up to your app).
+
+```csharp
+builder.Services.AddOktaFilter(builder.Configuration, services =>
+{
+    services.AddDistributedMemoryCache(); //AddStackExchangeRedisCache/AddDistributedSqlServerCache
+});
 ```
 
 ### 4. Configure DI in Startup

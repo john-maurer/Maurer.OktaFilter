@@ -20,7 +20,7 @@ namespace Maurer.OktaFilter
         private readonly OktaOptions _options;
 
         private DistributedCacheEntryOptions BuildCacheOptions() =>
-            new () { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(Convert.ToInt32(_options.LIFETIME)) };
+            new () { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(Convert.ToInt32(_options.LIFETIME)) };
 
         public AuthenticationFilter( ITokenService tokenService, IDistributedCacheHelper memoryCache, OktaOptions options, ILogger<AuthenticationFilter<TokenService>> logger)
         {
