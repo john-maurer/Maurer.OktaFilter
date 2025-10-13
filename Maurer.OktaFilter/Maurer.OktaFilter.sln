@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTesting", "UnitTesting\
 		{E4058124-31FB-4DA6-9DF5-02BF35161B0C} = {E4058124-31FB-4DA6-9DF5-02BF35161B0C}
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationTesting", "IntegrationTesting\IntegrationTesting.csproj", "{06C17941-BFA8-4405-ACCA-04BB0B0F0051}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,6 +26,10 @@ Global
 		{8672B235-4FFB-469E-876A-BE2CB342E627}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8672B235-4FFB-469E-876A-BE2CB342E627}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8672B235-4FFB-469E-876A-BE2CB342E627}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06C17941-BFA8-4405-ACCA-04BB0B0F0051}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06C17941-BFA8-4405-ACCA-04BB0B0F0051}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06C17941-BFA8-4405-ACCA-04BB0B0F0051}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06C17941-BFA8-4405-ACCA-04BB0B0F0051}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

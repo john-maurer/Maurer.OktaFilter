@@ -39,6 +39,13 @@
     - [4.3 Redis Cache](#43-redis-cache)
     - [4.4 SQL Server Cache](#44-sql-server-cache)
     - [4.5 Distributed SQL Server Cache (using Entity Framework)](#45-distributed-sql-server-cache-using-entity-framework)
+    - [4.6 Okta DI Extensions (reference)](#46-okta-di-extensions-reference)
+      - [4.6.1 Overloads](#461-overloads)
+      - [4.6.2 Parameters & defaults](#462-parameters--defaults)
+      - [4.6.3 Registered services & lifetimes](#463-registered-services--lifetimes)
+      - [4.6.4 Common usage patterns](#464-common-usage-patterns)
+    - [4.7 Validation behavior](#47-validation-behavior)
+      - [4.7.1 Pitfalls & troubleshooting](#471-pitfalls--troubleshooting)
 - [Using the Filter in a Controller](#using-the-filter-in-a-controller)
   - [Extracting the Token](#extracting-the-token)
 
@@ -562,9 +569,147 @@ services.AddDistributedSqlServerCache(options =>
 });
 ```
 
+### 4.6 Okta DI Extensions (reference)
+
+This library ships convenience extension methods so you can register everything with one call.  
+Use whichever overload fits your scenario.
+
+#### 4.6.1 Overloads
+
+```csharp
+// 1) Bind options from IConfiguration; registers DistributedMemoryCache by default.
+public static IServiceCollection AddOktaFilter(
+    this IServiceCollection services,
+    IConfiguration configuration,
+    bool useDistributedMemoryCache = true);
+
+// 2) IConfiguration + custom HttpClient pipeline (timeouts, handlers, policies, etc.).
+public static IServiceCollection AddOktaFilter(
+    this IServiceCollection services,
+    Action<IHttpClientBuilder> clientBuilder,
+    IConfiguration configuration,
+    bool useDistributedMemoryCache = true);
+
+// 3) Code-only options (no IConfiguration); registers DistributedMemoryCache by default.
+public static IServiceCollection AddOktaFilter(
+    this IServiceCollection services,
+    OktaOptions options,
+    bool useDistributedMemoryCache = true);
+
+// 4) Code-only options + custom HttpClient pipeline.
+public static IServiceCollection AddOktaFilter(
+    this IServiceCollection services,
+    OktaOptions options,
+    Action<IHttpClientBuilder> configureHttp,
+    bool useDistributedMemoryCache = true);
+
+// 5) Provider-agnostic variant (great with Azure Key Vault): caller supplies the cache registration.
+public static IServiceCollection AddOktaFilter(
+    this IServiceCollection services,
+    IConfiguration configuration,
+    Action<IServiceCollection> configureCache,
+    Action<IHttpClientBuilder>? clientBuilder = null);
+```
+
+#### 4.6.2 Parameters & defaults
+
+- `configuration` — values are bound from the `"Okta"` section to `OktaOptions` and validated.
+- `options` — pre-constructed `OktaOptions`; validated (HTTPS `OAUTHURL`, `LIFETIME >= 1`, data annotations).
+- `useDistributedMemoryCache` (default `true`)  
+  - `true` ➜ calls `AddDistributedMemoryCache()` for you.  
+  - `false` ➜ **does not** register any distributed cache; **you must** register one (e.g., Redis/SQL/memory) yourself.
+- `clientBuilder` / `configureHttp` — customize the typed HttpClient used by `ITokenService` (timeouts, handlers, Polly, headers, etc.).
+- `configureCache` — register your own `IDistributedCache` provider (Redis, SQL Server, or distributed memory).
+
+> Note: `AddMemoryCache()` alone does **not** provide `IDistributedCache`. If you pass `useDistributedMemoryCache: false`, make sure to register a distributed cache provider explicitly.
+
+#### 4.6.3 Registered services & lifetimes
+
+| Service                                                      | Lifetime    |
+| :----------------------------------------------------------- | :---------- |
+| `OktaOptions` (validated `IOptions<OktaOptions>.Value`)      | Singleton   |
+| `IDistributedCacheHelper`                                    | Singleton   |
+| `ITokenService` (typed client via `IHttpClientFactory`)      | Transient   |
+| `AuthenticationFilter<TokenService>`                         | Scoped      |
+| `IDistributedCache` (provider-specific; see notes above)     | — (yours)   |
+
+#### 4.6.4 Common usage patterns
+
+**Minimal (bind from config, use in-memory distributed cache)**
+
+```csharp
+builder.Services.AddOktaFilter(builder.Configuration);
+```
+
+**Custom HttpClient (timeout/headers/Polly)**
+
+```csharp
+builder.Services.AddOktaFilter(
+    clientBuilder: http => http.ConfigureHttpClient(c =>
+    {
+        c.Timeout = TimeSpan.FromSeconds(15);
+        c.DefaultRequestHeaders.Add("X-App", "my-service");
+    }),
+    configuration: builder.Configuration);
+```
+
+**Bring-your-own cache (e.g., Redis)**
+
+```csharp
+builder.Services.AddOktaFilter(builder.Configuration, useDistributedMemoryCache: false);
+builder.Services.AddStackExchangeRedisCache(o =>
+{
+    o.Configuration = builder.Configuration.GetConnectionString("redis");
+});
+```
+
+**Provider-agnostic (handy with Azure Key Vault)**
+
+```csharp
+// After you've already added Azure Key Vault provider to Configuration:
+builder.Services.AddOktaFilter(
+    configuration: builder.Configuration,
+    configureCache: services => services.AddDistributedMemoryCache(), // or Redis/SQL
+    clientBuilder: http => http.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        AutomaticDecompression = System.Net.DecompressionMethods.GZip |
+                                 System.Net.DecompressionMethods.Deflate
+    }));
+```
+
+**Code-only options (no IConfiguration)**
+
+```csharp
+builder.Services.AddOktaFilter(new OktaOptions
+{
+    USER      = "...",
+    PASSWORD  = "...",
+    OAUTHURL  = "https://your-okta-domain/oauth2/v1/token",
+    OAUTHKEY  = "OKTA-TOKEN",
+    GRANT     = "client_credentials",
+    SCOPE     = "openid profile",
+    RETRIES   = 1,
+    SLEEP     = 0,
+    LIFETIME  = 30
+});
+```
+
+#### 4.7 Validation behavior
+
+- `OAUTHURL` must be an **absolute HTTPS** URL; otherwise resolving `OktaOptions` throws `OptionsValidationException`.
+- `LIFETIME` must be ≥ 1 minute (and your own guidance recommends ≤ 55 minutes).  
+- Data annotations on `OktaOptions` are enforced when bound from configuration.
+
+#### 4.7.1 Pitfalls & troubleshooting
+
+- **“No service for type IDistributedCache”** — You passed `useDistributedMemoryCache: false` but didn’t register a distributed provider. Add one of:  
+  `AddDistributedMemoryCache`, `AddStackExchangeRedisCache`, or `AddDistributedSqlServerCache`.
+- **Resolving scoped filter from root provider** — Create a scope: `using var scope = sp.CreateScope();` then resolve `AuthenticationFilter<TokenService>`.
+- **Non-HTTPS OAUTHURL** — Will fail on options resolution; fix your config or test values.
+
 ---
 
-## Using the Filter in a Controller
+## 5. Using the Filter in a Controller
 
 Add the Filter to the Controller (via `ServiceFilter` or `TypeFilter`):
 
@@ -594,7 +739,7 @@ public class MyController : ControllerBase
 }
 ```
 
-### Extracting the Token
+### 6. Extracting the Token
 
 **As a Token object**
 ```csharp

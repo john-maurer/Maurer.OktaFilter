@@ -84,12 +84,12 @@ namespace Maurer.OktaFilter
         /// Bind options from IConfiguration, use DistributedMemoryCache; facilitates customizable HttpClient.
         /// </summary>
         /// <param name="services">Specifies the contract for a collection of service descriptors.</param>
-        /// <param name="clientBuilder">Action encapsulating and HttpClientBuilder</param>
         /// <param name="configuration">Specifies the contract for a collection of service descriptors.</param>
+        /// <param name="clientBuilder">Action encapsulating and HttpClientBuilder</param>
         /// <param name="useDistributedMemoryCache">Determines whether or not a distributed cache is setup or not; true by defaul.</param>
         /// <returns>'AuthenticationFilter' configured as with a custom auth service client.</returns>
 
-        public static IServiceCollection AddOktaFilter(this IServiceCollection services, Action<IHttpClientBuilder> clientBuilder, IConfiguration configuration, bool useDistributedMemoryCache = true)
+        public static IServiceCollection AddOktaFilter(this IServiceCollection services, IConfiguration configuration, Action<IHttpClientBuilder> clientBuilder, bool useDistributedMemoryCache = true)
         {
             services.AddOktaOptionsBound(configuration);
 
