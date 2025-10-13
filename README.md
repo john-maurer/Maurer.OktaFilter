@@ -46,11 +46,11 @@
       - [4.6.4 Common usage patterns](#464-common-usage-patterns)
     - [4.7 Validation behavior](#47-validation-behavior)
       - [4.7.1 Pitfalls & troubleshooting](#471-pitfalls--troubleshooting)
-- [Using the Filter in a Controller](#using-the-filter-in-a-controller)
-  - [Extracting the Token](#extracting-the-token)
+- [5. Using the Filter in a Controller](#5-using-the-filter-in-a-controller)
+  - [6. Extracting the Token](#6-extracting-the-token)
 
 ---
-
+ 
 ## Intent
 
 This library aims to provide a seamless solution for acquiring, applying, and storing OKTA security tokens for OKTA token dependant services with minimal impact.
