@@ -1,3 +1,5 @@
+#dotnet new tool-manifest 
+#dotnet tool install Cake.Tool 
 #docker run --rm -v "${PWD}:/src" -w /src oktafilter-build
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0
