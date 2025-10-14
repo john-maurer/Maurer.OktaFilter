@@ -260,7 +260,7 @@ participant TokenSvc as ITokenService
 
 Filter->>Cache: Has(OAUTHKEY)?
 Cache-->>Filter: false
-loop Retry (Settings.RETRIES) with delay (Settings.RETRYSLEEP s)
+loop Retry (OktaOptions.RETRIES) with delay (OktaOptions.RETRYSLEEP s)
   Filter->>TokenSvc: GetToken()
   alt failure (exception or null/empty AccessToken)
     TokenSvc-->>Filter: failure
@@ -282,8 +282,8 @@ end
 ## Outcomes
 
 - **Lower cost & latency** — tokens are cached and reused across requests (and across instances with a distributed cache), reducing round-trips to OKTA.
-- **Resilience by default** — transient auth failures (401/403/407) are retried using Polly; retry count and delay are controlled via `Settings.RETRIES` and `Settings.SLEEP`.
-- **Predictable expiration** — cache entries honor `Settings.LIFETIME`; a new token is acquired automatically on cache miss or expiry.
+- **Resilience by default** — transient auth failures (401/403/407) are retried using Polly; retry count and delay are controlled via `OktaOptions.RETRIES` and `OktaOptions.SLEEP`.
+- **Predictable expiration** — cache entries honor `OktaOptions.LIFETIME`; a new token is acquired automatically on cache miss or expiry.
 - **Simple composition** — the `IAsyncActionFilter` encapsulates the handshake so controllers stay focused on business logic; everything is wired via DI.
 - **Pluggable storage** — works with in-memory, Redis, or SQL Server distributed cache behind `IDistributedCache`.
 - **Security baseline** — `TokenService` enforces HTTPS token endpoints and uses typed JSON parsing; scopes and grant type are explicit via settings.
@@ -311,7 +311,7 @@ You'll need to acquire a valid oauth user name, password and URL from your organ
 3. Go to the **Browse** tab.  
 4. In the search bar, type **Maurer.OKTAFilter** and install the latest package.
 
-### 3. Configure Settings
+### 3. Configure Settings `OktaOptions`
 
 Use the typed options `OktaOptions` to configure the filter and how OKTA tokens are managed:
 
@@ -368,6 +368,23 @@ az keyvault secret set --vault-name <vault> --name Okta--RETRIES --value 2
 az keyvault secret set --vault-name <vault> --name Okta--SLEEP --value 1
 az keyvault secret set --vault-name <vault> --name Okta--LIFETIME --value 30
 ```
+
+Note the `Okta` part of `Okta:USER ⇒ Okta--USER` and the other values, this is the key used by the filter to index the OKTA token.  You could customize however you please, for example:
+
+```csharp
+// Store options under "Security:Okta"
+builder.Services.AddOktaFilter(builder.Configuration, OKTASectionName: "Security:Okta");
+```
+
+With delimit for **configuration** section separators being `:` and **Key Vault** being `--`.
+
+| Configuration key      | Key Vault secret name                                      |
+|------------------------|------------------------------------------------------------|
+| Security:Okta:USER     | Security--Okta--USER                                       |
+| Security:Okta:PASSWORD | Security--Okta-PASSWORD                                    |
+| Security:Okta:OAUTHURL | Security--Okta--OAUTHURL                                   |
+| Security:Okta:OAUTHURL | Security--Okta--OAUTHURL                                   |
+| Security:Okta:OAUTHKEY | Security--Okta--OAUTHKEY                                   |
 
 ##### 3.2.1: Step 1 - Dependencies
 
@@ -571,57 +588,79 @@ services.AddDistributedSqlServerCache(options =>
 
 ### 4.6 Okta DI Extensions (reference)
 
-This library ships convenience extension methods so you can register everything with one call.  
+This library ships convenience extension methods so you can register everything with one call.
 Use whichever overload fits your scenario.
 
 #### 4.6.1 Overloads
 
 ```csharp
-// 1) Bind options from IConfiguration; registers DistributedMemoryCache by default.
+// 1) IConfiguration bound options; optional built-in cache registration; default HttpClient.
 public static IServiceCollection AddOktaFilter(
     this IServiceCollection services,
     IConfiguration configuration,
+    bool useDefaultCache = true,
+    string OKTASectionName = "Okta",
     bool useDistributedMemoryCache = true);
 
-// 2) IConfiguration + custom HttpClient pipeline (timeouts, handlers, policies, etc.).
+// 2) IConfiguration bound options; optional built-in cache; custom HttpClient pipeline.
 public static IServiceCollection AddOktaFilter(
     this IServiceCollection services,
+    IConfiguration configuration,
     Action<IHttpClientBuilder> clientBuilder,
-    IConfiguration configuration,
+    bool useDefaultCache = true,
+    string OKTASectionName = "Okta",
     bool useDistributedMemoryCache = true);
 
-// 3) Code-only options (no IConfiguration); registers DistributedMemoryCache by default.
+// 3) Code-only options (no IConfiguration); optional built-in cache; default HttpClient.
 public static IServiceCollection AddOktaFilter(
     this IServiceCollection services,
     OktaOptions options,
+    bool useDefaultCache = true,
+    string OKTASectionName = "Okta",
     bool useDistributedMemoryCache = true);
 
-// 4) Code-only options + custom HttpClient pipeline.
+// 4) Code-only options; optional built-in cache; custom HttpClient pipeline.
 public static IServiceCollection AddOktaFilter(
     this IServiceCollection services,
     OktaOptions options,
     Action<IHttpClientBuilder> configureHttp,
+    bool useDefaultCache = true,
     bool useDistributedMemoryCache = true);
 
-// 5) Provider-agnostic variant (great with Azure Key Vault): caller supplies the cache registration.
+// 5) Provider-agnostic (great with Azure Key Vault/App Config):
+// caller supplies the cache registration; options bound from IConfiguration.
 public static IServiceCollection AddOktaFilter(
     this IServiceCollection services,
     IConfiguration configuration,
     Action<IServiceCollection> configureCache,
-    Action<IHttpClientBuilder>? clientBuilder = null);
+    Action<IHttpClientBuilder>? clientBuilder = null,
+    string OKTASectionName = "Okta");
 ```
 
 #### 4.6.2 Parameters & defaults
 
-- `configuration` — values are bound from the `"Okta"` section to `OktaOptions` and validated.
-- `options` — pre-constructed `OktaOptions`; validated (HTTPS `OAUTHURL`, `LIFETIME >= 1`, data annotations).
-- `useDistributedMemoryCache` (default `true`)  
-  - `true` ➜ calls `AddDistributedMemoryCache()` for you.  
-  - `false` ➜ **does not** register any distributed cache; **you must** register one (e.g., Redis/SQL/memory) yourself.
-- `clientBuilder` / `configureHttp` — customize the typed HttpClient used by `ITokenService` (timeouts, handlers, Polly, headers, etc.).
-- `configureCache` — register your own `IDistributedCache` provider (Redis, SQL Server, or distributed memory).
+- `configuration` — values are bound from the `OKTASectionName` section (default `"Okta"`) to `OktaOptions` and validated.
+- `OKTASectionName` — customize where options are read from (e.g., `"Security:Okta"`). Works with appsettings, env vars, Azure App Configuration, and Azure Key Vault.
+- `options` — pre-constructed `OktaOptions`; validated (HTTPS `OAUTHURL`, data annotations).  
+  *Note:* the `OKTASectionName` parameter is ignored in code-only overloads.
+- `useDefaultCache` (default `true`)  
+  - **true** ➜ the extension registers a default cache for you:
+    - if `useDistributedMemoryCache == true` ➜ `AddDistributedMemoryCache()`  
+    - if `useDistributedMemoryCache == false` ➜ `AddMemoryCache()`
+  - **false** ➜ the extension **does not register any cache**. You must register your own `IDistributedCache` (Redis/SQL/DistributedMemory) or `IMemoryCache` as needed.
+- `useDistributedMemoryCache` (default `true`) — only applies when `useDefaultCache == true`; selects which default cache to add (distributed vs. in-process memory).
+- `clientBuilder` / `configureHttp` — customize the typed `HttpClient` for `ITokenService` (timeouts, handlers, Polly, headers, etc.).
+- `configureCache` — lets the caller register any cache provider (e.g., Redis/SQL/DistributedMemory). In this overload the extension does **not** add a cache itself.
 
-> Note: `AddMemoryCache()` alone does **not** provide `IDistributedCache`. If you pass `useDistributedMemoryCache: false`, make sure to register a distributed cache provider explicitly.
+> **Note:** `AddMemoryCache()` provides **IMemoryCache** (in-process, not shared across instances). If you need cross-process sharing, use a real **IDistributedCache** (e.g., Redis or SQL) or `AddDistributedMemoryCache()` for single-machine distributed semantics.
+
+**Cache behavior matrix**
+
+| useDefaultCache | useDistributedMemoryCache | What gets registered                  |
+|-----------------|---------------------------|---------------------------------------|
+| true            | true                      | AddDistributedMemoryCache()           |
+| true            | false                     | AddMemoryCache()                      |
+| false           | (ignored)                 | Nothing (you must register a cache)   |
 
 #### 4.6.3 Registered services & lifetimes
 

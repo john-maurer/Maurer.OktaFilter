@@ -36,10 +36,10 @@ namespace Maurer.OktaFilter.Helpers
 
         public async Task Set(string key, object value, DistributedCacheEntryOptions options)
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace ("Cannot be null or whitespace");
+            ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
-            if (value is null) throw new ArgumentException("Value cannot be null or whitespace");
-            if (options is null) throw new ArgumentException("DistributedCacheEntryOptions cannot be null or whitespace");
+            if (value is null) throw new ArgumentException($"'{nameof(value)}' cannot be null or whitespace");
+            if (options is null) throw new ArgumentException($"'{nameof(options)}' cannot be null or whitespace");
 
             var serializedValue = value as string ?? JsonConvert.SerializeObject(value);
 
