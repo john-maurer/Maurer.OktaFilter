@@ -12,3 +12,10 @@ Maurer.OktaFilter/IntegrationTesting/bin/*
 Maurer.OktaFilter/IntegrationTesting/obj/*
 Maurer.OktaFilter/Maurer.OktaFilter/IntegrationTesting/obj/*
 Maurer.OktaFilter/Maurer.OktaFilter/IntegrationTesting/bin/*
+Maurer.OktaFilter/.config/*
+Maurer.OktaFilter/artifacts/*
+Maurer.OktaFilter/tools/*
+Maurer.OktaFilter/tools/Addins/*
+.config/
+artifacts/
+tools/

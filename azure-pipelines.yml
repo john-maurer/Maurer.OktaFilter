@@ -1,0 +1,147 @@
+# azure-pipelines.yml
+# CI for Maurer.OktaFilter using Cake
+# - Builds on ubuntu-latest
+# - Installs .NET 8 & 9 SDKs
+# - Runs Cake: Clean/Restore/Build/Test/Pack
+# - Publishes ./artifacts/*.nupkg and .snupkg
+# - Optional NuGet push when PushToNuGet=true and NUGET_API_KEY is set
+
+trigger:
+  branches:
+    include:
+      - main
+      - refs/heads/* # adjust to branching
+  tags:
+    include:
+      - v* # run when tags like v1.2.3 are pushed
+
+pr:
+  branches:
+    include:
+      - main
+      - refs/heads/*
+
+variables:
+  Solution: Maurer.OktaFilter/Maurer.OktaFilter.sln
+  Project:  Maurer.OktaFilter/Maurer.OktaFilter/Maurer.OktaFilter.csproj
+  Configuration: Release
+
+  # CI defaults; you can override per run/pipeline variable
+  SkipIntegration: 'true'       # set to 'false' to run integration tests
+  PushToNuGet: 'false'          # set to 'true' to enable push step
+  NuGetSource: 'https://api.nuget.org/v3/index.json'
+
+  # SemVer is computed below; default fallback:
+  SemVer: 0.0.0-ci-$(Build.BuildId)
+
+  # IMPORTANT: define a secret variable NUGET_API_KEY in pipeline or variable group
+  # NUGET_API_KEY: $(NUGET_API_KEY)
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+- stage: BuildPack
+  displayName: Build, Test, Pack
+  jobs:
+  - job: Build
+    steps:
+    - checkout: self
+      fetchDepth: 0   # allow tag detection for versioning
+
+    - task: UseDotNet@2
+      displayName: 'Use .NET 8 SDK'
+      inputs:
+        packageType: 'sdk'
+        version: '8.x'
+
+    - task: UseDotNet@2
+      displayName: 'Use .NET 9 SDK'
+      inputs:
+        packageType: 'sdk'
+        version: '9.x'
+
+    # Optional: cache NuGet packages for speed
+    - task: Cache@2
+      displayName: 'Cache NuGet'
+      inputs:
+        key: 'nuget | "$(Agent.OS)" | **/packages.lock.json, **/*.csproj'
+        restoreKeys: |
+          nuget | "$(Agent.OS)"
+        path: ~/.nuget/packages
+
+    # Compute SemVer from tag 'vX.Y.Z' when building a tag; fallback stays as variable
+    - script: |
+        echo "Branch: $(Build.SourceBranch)"
+        if [[ "$(Build.SourceBranch)" == refs/tags/v* ]]; then
+          RAW="${BUILD_SOURCEBRANCH##refs/tags/}"
+          SEMVER="${RAW#v}"
+          echo "##vso[task.setvariable variable=SemVer]$SEMVER"
+          echo "Derived SemVer from tag: $SEMVER"
+        else
+          echo "Using default SemVer: $(SemVer)"
+        fi
+      displayName: 'Compute SemVer'
+
+    - script: |
+        dotnet tool restore
+        dotnet cake --version
+      displayName: 'Restore Cake.Tool'
+
+    # Run Cake -> Clean/Restore/Build/Test/Pack (your build.cake handles the graph)
+    - script: |
+        echo "SemVer=$(SemVer)"
+        dotnet cake \
+          --target=Pack \
+          --configuration=$(Configuration) \
+          --solution "$(Solution)" \
+          --project  "$(Project)" \
+          --semver   "$(SemVer)" \
+          --skipIntegration=$(SkipIntegration)
+      displayName: 'Cake Pack (build + test + pack)'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish artifacts'
+      inputs:
+        PathtoPublish: 'artifacts'
+        ArtifactName: 'packages'
+        publishLocation: 'Container'
+
+- stage: NuGetPush
+  displayName: Push to NuGet
+  dependsOn: BuildPack
+  condition: and(succeeded(), eq(variables['PushToNuGet'], 'true'))
+  jobs:
+  - job: Push
+    steps:
+    - checkout: self
+      fetchDepth: 0
+
+    - task: UseDotNet@2
+      displayName: 'Use .NET 8 SDK'
+      inputs:
+        packageType: 'sdk'
+        version: '8.x'
+
+    - script: |
+        dotnet tool restore
+        dotnet cake --version
+      displayName: 'Restore Cake.Tool'
+
+    # Invoke Cake's Push target; NUGET_API_KEY is read from environment
+    - script: |
+        if [ -z "$NUGET_API_KEY" ]; then
+          echo "NUGET_API_KEY is not set. Exiting."
+          exit 1
+        fi
+        dotnet cake \
+          --target=Push \
+          --configuration=$(Configuration) \
+          --solution "$(Solution)" \
+          --project  "$(Project)" \
+          --semver   "$(SemVer)" \
+          --push=true \
+          --nugetSource "$(NuGetSource)"
+      displayName: 'Cake Push to NuGet'
+      env:
+        NUGET_API_KEY: $(NUGET_API_KEY)   # secret variable
