@@ -6,7 +6,6 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Polly;
-using Polly.Retry;
 
 namespace Maurer.OktaFilter
 {
@@ -15,14 +14,14 @@ namespace Maurer.OktaFilter
     {
         private readonly ILogger<AuthenticationFilter<TokenService>> _logger;
         private readonly ITokenService _tokenService;
-        private readonly AsyncRetryPolicy<IActionResult> _retryPolicy;
+        private readonly AsyncPolicy<IActionResult> _retryPolicy;
         private readonly IDistributedCacheHelper _memoryCache;
         private readonly OktaOptions _options;
 
         private DistributedCacheEntryOptions BuildCacheOptions() =>
             new () { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(Convert.ToInt32(_options.LIFETIME)) };
 
-        public AuthenticationFilter( ITokenService tokenService, IDistributedCacheHelper memoryCache, OktaOptions options, ILogger<AuthenticationFilter<TokenService>> logger)
+        public AuthenticationFilter(ITokenService tokenService, IDistributedCacheHelper memoryCache, OktaOptions options, ILogger<AuthenticationFilter<TokenService>> logger)
         {
             _logger = logger;
             _tokenService = tokenService;
@@ -31,7 +30,7 @@ namespace Maurer.OktaFilter
 
             _retryPolicy = Policy
                 .Handle<Exception>()
-                .OrResult<IActionResult>(response => IsAuthenticationFailure(response))
+                .OrResult<IActionResult>(IsAuthenticationFailure)
                 .RetryAsync(
                     retryCount: Convert.ToInt32(_options.RETRIES),
                     onRetryAsync: async (_, retryNumber) =>

@@ -44,7 +44,7 @@ namespace UnitTesting.Assertions.Filter
                 .Returns(Task.CompletedTask);
 
             
-            tokenService.Setup(service => service.GetToken()).ReturnsAsync(AuthenticationFilterFixture.SampleToken());
+            tokenService.Setup(service => service.GetToken(CancellationToken.None)).ReturnsAsync(AuthenticationFilterFixture.SampleToken());
 
             var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, _fixture.Options, TokenServiceLogger);
             var context = AuthenticationFilterFixture.MockExecutingContext();
@@ -85,7 +85,7 @@ namespace UnitTesting.Assertions.Filter
 
             await filter.OnActionExecutionAsync(context, next);
 
-            tokenService.Verify(service => service.GetToken(), Times.Never);
+            tokenService.Verify(service => service.GetToken(CancellationToken.None), Times.Never);
 
             Assert.Equal(1, nextCount);
         }
@@ -102,7 +102,7 @@ namespace UnitTesting.Assertions.Filter
                  .Returns(Task.CompletedTask);
 
             
-            tokenService.Setup(s => s.GetToken()).ReturnsAsync(() =>
+            tokenService.Setup(s => s.GetToken(CancellationToken.None)).ReturnsAsync(() =>
             {
                 calls++;
                 if (calls < 3) throw new InvalidOperationException("transient");
@@ -139,7 +139,7 @@ namespace UnitTesting.Assertions.Filter
 
             cacheHelper.Setup(cache => cache.Has(_fixture.Options.OAUTHKEY)).ReturnsAsync(false);
 
-            tokenService.Setup(service => service.GetToken()).ReturnsAsync(new Token { AccessToken = "" }); // invalid
+            tokenService.Setup(service => service.GetToken(CancellationToken.None)).ReturnsAsync(new Token { AccessToken = "" }); // invalid
 
             var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, new OktaOptions
             {
@@ -175,7 +175,7 @@ namespace UnitTesting.Assertions.Filter
                  .Returns(Task.CompletedTask);
 
 
-            tokenService.Setup(service => service.GetToken()).ReturnsAsync(AuthenticationFilterFixture.SampleToken());
+            tokenService.Setup(service => service.GetToken(CancellationToken.None)).ReturnsAsync(AuthenticationFilterFixture.SampleToken());
 
             //Pre-set a 401 on the response BEFORE action executes.
             ActionExecutionDelegate next = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(context, 200)(); };
@@ -194,7 +194,7 @@ namespace UnitTesting.Assertions.Filter
             var calls = 0;
 
             tokenService.Reset();
-            tokenService.Setup(service => service.GetToken()).ReturnsAsync(() =>
+            tokenService.Setup(service => service.GetToken(CancellationToken.None)).ReturnsAsync(() =>
             {
                 calls++;
                 return AuthenticationFilterFixture.SampleToken();
@@ -218,7 +218,7 @@ namespace UnitTesting.Assertions.Filter
             // token service returns first, then second
             var tokenService = new Mock<ITokenService>();
             tokenService
-                .SetupSequence(service => service.GetToken())
+                .SetupSequence(service => service.GetToken(CancellationToken.None))
                 .ReturnsAsync(new Token { AccessToken = "first-token", TokenType = "Bearer", ExpiresIn = "0", Scope = _fixture.Options.SCOPE })
                 .ReturnsAsync(new Token { AccessToken = "second-token", TokenType = "Bearer", ExpiresIn = "0", Scope = _fixture.Options.SCOPE });
 
@@ -241,7 +241,7 @@ namespace UnitTesting.Assertions.Filter
             ActionExecutionDelegate next = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(context1, 200)(); };
 
             await filter.OnActionExecutionAsync(context1, next);
-            tokenService.Verify(s => s.GetToken(), Times.Once);
+            tokenService.Verify(s => s.GetToken(CancellationToken.None), Times.Once);
 
             var cached1 = await cacheHelper.Get(_fixture.Options.OAUTHKEY);
             Assert.NotNull(cached1);
@@ -252,7 +252,7 @@ namespace UnitTesting.Assertions.Filter
             ActionExecutionDelegate next2 = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(context2, 200)(); };
             await filter.OnActionExecutionAsync(context2, next2);
 
-            tokenService.Verify(s => s.GetToken(), Times.Once); // still 1 call
+            tokenService.Verify(s => s.GetToken(CancellationToken.None), Times.Once); // still 1 call
 
             // 3) advance beyond TTL and call again → cache entry self-expires, filter refetches
             clock.Advance(TimeSpan.FromMinutes(1).Add(TimeSpan.FromSeconds(1)));
@@ -261,7 +261,7 @@ namespace UnitTesting.Assertions.Filter
             ActionExecutionDelegate next3 = async () => { nextCount++; return await AuthenticationFilterFixture.MockNext(context3, 200)(); };
             await filter.OnActionExecutionAsync(context3, next3);
 
-            tokenService.Verify(service => service.GetToken(), Times.Exactly(2));
+            tokenService.Verify(service => service.GetToken(CancellationToken.None), Times.Exactly(2));
             var cached2 = await cacheHelper.Get(_fixture.Options.OAUTHKEY);
             Assert.NotNull(cached2);
             Assert.Contains("second-token", cached2!);

@@ -33,7 +33,7 @@ namespace Maurer.OktaFilter.Services
             _options = options;
         }
 
-        public async Task<Token?> GetToken()
+        public async Task<Token?> GetToken(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -59,11 +59,11 @@ namespace Maurer.OktaFilter.Services
                     });
 
                     //Create response that prefers non-buffering completion and status validation before reading body
-                    using (var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
+                    using (var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
                     {
                         _logger.LogInformation("Token retrieval completed with a status of '{Status} - {Reason}'.", response.StatusCode, response.ReasonPhrase);
 
-                        var result = await response.Content.ReadAsStringAsync();
+                        var result = await response.Content.ReadAsStringAsync(cancellationToken);
 
                         return !string.IsNullOrWhiteSpace(result) ? ParseToken(result) : null;
                     }
