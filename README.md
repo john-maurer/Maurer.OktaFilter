@@ -313,14 +313,23 @@ You'll need to acquire a valid oauth user name, password and URL from your organ
 
 ### 3. Configure Settings `OktaOptions`
 
-Use the typed options `OktaOptions` to configure the filter and how OKTA tokens are managed:
+Use the typed options `OktaOptions` to configure the filter and how OKTA tokens are managed.
 
-- **OAUTHUSER** – Authorized user/principle ID  
-- **OAUTHPASSWORD** – Password associated with user/principle ID  
+**OAuth Options**
+
+These properties configure the token exchange:
+
+- **USER** – Authorized user/principle ID  
+- **PASSWORD** – Password associated with user/principle ID  
 - **OAUTHURL** – Your organization's [OKTA URL](https://developer.okta.com/docs/guides/find-your-domain/main/).  
-- **OAUTHKEY** – The KEY value associated with your OKTA key (examples will use _OKTA-TOKEN_).
 - **GRANT** – The OAuth2 grant type (e.g., `client_credentials`, `authorization_code`, etc.).
 - **SCOPE** – The permissions requested when obtaining an access token. See [Scopes](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc).
+
+**Filter Options**
+
+These properties configure the retry policy for the token exchange:
+
+- **KEY** – The KEY value associated with your OKTA key (examples will use _OKTA-TOKEN_).
 - **RETRIES** – The number of attempts the filter should make to acquire an OKTA token.  
 - **SLEEP** – The number in seconds to wait in between retry attempts.  
 - **LIFETIME** – The lifetime in seconds of the OKTA token, should not exceed 55 minutes.
