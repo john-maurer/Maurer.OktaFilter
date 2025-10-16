@@ -28,7 +28,7 @@ namespace UnitTesting.Fixture
             OAUTHURL = "https://mockoauthserver.com/token",
             USER = "testuser",
             PASSWORD = "testpassword",
-            OAUTHKEY = "OKTA-TOKEN",
+            AUTHKEY = "OKTA-TOKEN",
             GRANT = "client_credentials",
             SCOPE = "openid profile email",
             SLEEP = 30,
@@ -36,7 +36,7 @@ namespace UnitTesting.Fixture
             LIFETIME = 30,
         };
 
-        public static Token SampleToken() => new Token
+        public static OktaToken SampleToken() => new OktaToken
         {
             AccessToken = "mocked_token",
             TokenType = "Bearer",

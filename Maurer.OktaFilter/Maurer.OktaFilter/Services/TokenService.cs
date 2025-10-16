@@ -14,11 +14,11 @@ namespace Maurer.OktaFilter.Services
         private readonly HttpClient _httpClient;
         private readonly OktaOptions _options;
 
-        private Token? ParseToken(string responseBody)
+        private OktaToken? ParseToken(string responseBody)
         {
             try
             {
-                return JsonConvert.DeserializeObject<Token?>(responseBody);
+                return JsonConvert.DeserializeObject<OktaToken?>(responseBody);
             }
             catch (JsonException)
             {
@@ -33,7 +33,7 @@ namespace Maurer.OktaFilter.Services
             _options = options;
         }
 
-        public async Task<Token?> GetToken(CancellationToken cancellationToken = default)
+        public async Task<OktaToken?> GetToken(CancellationToken cancellationToken = default)
         {
             try
             {

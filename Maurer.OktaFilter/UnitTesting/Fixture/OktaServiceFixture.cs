@@ -33,7 +33,7 @@ namespace UnitTesting.Fixture
         protected override void Arrange(params object[] parameters)
         {
             var mockLogger = new Mock<ILogger<TokenService>>();
-            var token = new Token { 
+            var token = new OktaToken { 
                 AccessToken = "mocked_token",
                 ExpiresIn = Options.LIFETIME.ToString(),
                 Scope = Options.SCOPE,
@@ -58,7 +58,7 @@ namespace UnitTesting.Fixture
             OAUTHURL = "https://mockoauthserver.com/token",
             USER = "testuser",
             PASSWORD = "testpassword",
-            OAUTHKEY = "OKTA-TOKEN",
+            AUTHKEY = "OKTA-TOKEN",
             GRANT = "client_credentials",
             SCOPE = "openid profile email",
             SLEEP = 30,

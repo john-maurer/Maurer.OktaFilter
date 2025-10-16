@@ -6,7 +6,7 @@ namespace UnitTesting.Harness
 {
     public class OktaServiceHarness : AbstractHarness<OktaServiceFixture>
     {
-        protected override async Task<Token?> Act(params object[] parameters)
+        protected override async Task<OktaToken?> Act(params object[] parameters)
         {
             TokenService service = (TokenService) parameters[0];
 

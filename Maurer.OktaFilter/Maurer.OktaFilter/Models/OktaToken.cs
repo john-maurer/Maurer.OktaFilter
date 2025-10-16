@@ -2,9 +2,9 @@
 
 namespace Maurer.OktaFilter.Models
 {
-    public class Token
+    public class OktaToken
     {
-        public Token()
+        public OktaToken()
         {
             AccessToken = string.Empty;
             TokenType = string.Empty;
@@ -12,7 +12,7 @@ namespace Maurer.OktaFilter.Models
             Scope = string.Empty;
         }
 
-        public Token(Token token)
+        public OktaToken(OktaToken token)
         {
             AccessToken = token.AccessToken;
             TokenType = token.TokenType;

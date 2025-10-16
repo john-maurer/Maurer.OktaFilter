@@ -59,7 +59,7 @@ namespace Maurer.OktaFilter
         {
             try
             {
-                if (!await _memoryCache.Has(_options.OAUTHKEY))
+                if (!await _memoryCache.Has(_options.AUTHKEY))
                 {
                     await _retryPolicy.ExecuteAsync(async () =>
                     {
@@ -68,7 +68,7 @@ namespace Maurer.OktaFilter
                         if (token is null || string.IsNullOrWhiteSpace(token.AccessToken))
                             throw new InvalidOperationException("Failed to acquire OKTA token.");
 
-                        await _memoryCache.Set(_options.OAUTHKEY, JsonConvert.SerializeObject(token), BuildCacheOptions());
+                        await _memoryCache.Set(_options.AUTHKEY, JsonConvert.SerializeObject(token), BuildCacheOptions());
 
                         return new StatusCodeResult(context.HttpContext.Response.StatusCode);
                     });

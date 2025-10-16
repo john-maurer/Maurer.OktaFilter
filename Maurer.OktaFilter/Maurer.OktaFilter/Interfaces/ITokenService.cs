@@ -4,6 +4,6 @@ namespace Maurer.OktaFilter.Interfaces
 {
     public interface ITokenService
     {
-        Task<Token?> GetToken(CancellationToken cancellationToken = default);
+        Task<OktaToken?> GetToken(CancellationToken cancellationToken = default);
     }
 }

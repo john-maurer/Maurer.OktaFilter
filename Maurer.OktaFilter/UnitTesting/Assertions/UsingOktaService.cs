@@ -12,7 +12,7 @@ namespace UnitTesting.Assertions
 {
     public class UsingOktaService : OktaServiceHarness
     {
-        private static Token OkBody() => new Token
+        private static OktaToken OkBody() => new OktaToken
         {
             AccessToken = "abc123",
             TokenType = "Bearer",
@@ -157,7 +157,7 @@ namespace UnitTesting.Assertions
         [Fact]
         public async Task ShouldReturnDeserializedTokenOnStatusOk()
         {
-            Token? token = await Act(MakeService());
+            OktaToken? token = await Act(MakeService());
 
             Assert.NotNull(token);
         }
@@ -199,7 +199,7 @@ namespace UnitTesting.Assertions
             object? result = await Act(_fixture.ContextServiceOK);
 
             Assert.NotNull(result);
-            Assert.IsType<Token>(result);
+            Assert.IsType<OktaToken>(result);
         }
 
         [Fact]
@@ -257,7 +257,7 @@ namespace UnitTesting.Assertions
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
                 OAUTHURL = "http://mockoauthserver.com/token", // Force non-HTTPS to trigger the guard
-                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,
                 LIFETIME = _fixture.Options.LIFETIME,

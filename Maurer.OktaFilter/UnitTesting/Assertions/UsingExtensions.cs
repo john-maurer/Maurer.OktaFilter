@@ -33,7 +33,7 @@ namespace UnitTesting.Assertions
 
             // Force options validation (you register OktaOptions as a singleton via IOptions.Value)
             var opts = serviceProvider.GetRequiredService<OktaOptions>();
-            Assert.Equal("OKTA-TOKEN", opts.OAUTHKEY);
+            Assert.Equal("OKTA-TOKEN", opts.AUTHKEY);
 
             // Cache + helper + token service + filter resolve
             Assert.NotNull(serviceProvider.GetRequiredService<IDistributedCache>());
@@ -106,7 +106,7 @@ namespace UnitTesting.Assertions
                 USER = "client_id",
                 PASSWORD = "secret",
                 OAUTHURL = "https://example.com/oauth2/v1/token",
-                OAUTHKEY = "OKTA-TOKEN",
+                AUTHKEY = "OKTA-TOKEN",
                 GRANT = "client_credentials",
                 SCOPE = "openid",
                 RETRIES = 1,

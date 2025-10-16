@@ -31,9 +31,9 @@ namespace UnitTesting.Assertions.Filter
             var tokenService = new Mock<ITokenService>();
             DistributedCacheEntryOptions? cachedOptions = null;
 
-            cacheHelper.Setup(cache => cache.Has(_fixture.Options.OAUTHKEY)).ReturnsAsync(false);
+            cacheHelper.Setup(cache => cache.Has(_fixture.Options.AUTHKEY)).ReturnsAsync(false);
             cacheHelper.Setup(cache => cache.Set(
-                    _fixture.Options.OAUTHKEY,
+                    _fixture.Options.AUTHKEY,
                     It.IsAny<object>(),
                     It.IsAny<DistributedCacheEntryOptions>()))
                 .Callback<string, object, DistributedCacheEntryOptions>((key, value, options) =>
@@ -65,14 +65,14 @@ namespace UnitTesting.Assertions.Filter
         {
             var cacheHelper = new Mock<IDistributedCacheHelper>();
 
-            cacheHelper.Setup(cache => cache.Has(_fixture.Options.OAUTHKEY)).ReturnsAsync(true);
+            cacheHelper.Setup(cache => cache.Has(_fixture.Options.AUTHKEY)).ReturnsAsync(true);
 
             var tokenService = new Mock<ITokenService>();
             var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, new OktaOptions { 
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
                 OAUTHURL = _fixture.Options.OAUTHURL,
-                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,
                 LIFETIME = _fixture.Options.LIFETIME,
@@ -97,7 +97,7 @@ namespace UnitTesting.Assertions.Filter
             var tokenService = new Mock<ITokenService>();
             var calls = 0;
             
-            cacheHelper.Setup(cache => cache.Has(_fixture.Options.OAUTHKEY)).ReturnsAsync(false);
+            cacheHelper.Setup(cache => cache.Has(_fixture.Options.AUTHKEY)).ReturnsAsync(false);
             cacheHelper.Setup(cache => cache.Set(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<DistributedCacheEntryOptions>()))
                  .Returns(Task.CompletedTask);
 
@@ -114,7 +114,7 @@ namespace UnitTesting.Assertions.Filter
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
                 OAUTHURL = _fixture.Options.OAUTHURL,
-                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,
                 LIFETIME = _fixture.Options.LIFETIME,
@@ -137,16 +137,16 @@ namespace UnitTesting.Assertions.Filter
             var cacheHelper = new Mock<IDistributedCacheHelper>();
             var tokenService = new Mock<ITokenService>();
 
-            cacheHelper.Setup(cache => cache.Has(_fixture.Options.OAUTHKEY)).ReturnsAsync(false);
+            cacheHelper.Setup(cache => cache.Has(_fixture.Options.AUTHKEY)).ReturnsAsync(false);
 
-            tokenService.Setup(service => service.GetToken(CancellationToken.None)).ReturnsAsync(new Token { AccessToken = "" }); // invalid
+            tokenService.Setup(service => service.GetToken(CancellationToken.None)).ReturnsAsync(new OktaToken { AccessToken = "" }); // invalid
 
             var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, new OktaOptions
             {
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
                 OAUTHURL = _fixture.Options.OAUTHURL,
-                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,
                 LIFETIME = _fixture.Options.LIFETIME,
@@ -170,7 +170,7 @@ namespace UnitTesting.Assertions.Filter
             var context = AuthenticationFilterFixture.MockExecutingContext(initialStatus: 401);
             var nextCount = 0;
 
-            cacheHelper.Setup(cache => cache.Has(_fixture.Options.OAUTHKEY)).ReturnsAsync(false);
+            cacheHelper.Setup(cache => cache.Has(_fixture.Options.AUTHKEY)).ReturnsAsync(false);
             cacheHelper.Setup(cache => cache.Set(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<DistributedCacheEntryOptions>()))
                  .Returns(Task.CompletedTask);
 
@@ -184,7 +184,7 @@ namespace UnitTesting.Assertions.Filter
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
                 OAUTHURL = _fixture.Options.OAUTHURL,
-                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,
                 LIFETIME = _fixture.Options.LIFETIME,
@@ -219,15 +219,15 @@ namespace UnitTesting.Assertions.Filter
             var tokenService = new Mock<ITokenService>();
             tokenService
                 .SetupSequence(service => service.GetToken(CancellationToken.None))
-                .ReturnsAsync(new Token { AccessToken = "first-token", TokenType = "Bearer", ExpiresIn = "0", Scope = _fixture.Options.SCOPE })
-                .ReturnsAsync(new Token { AccessToken = "second-token", TokenType = "Bearer", ExpiresIn = "0", Scope = _fixture.Options.SCOPE });
+                .ReturnsAsync(new OktaToken { AccessToken = "first-token", TokenType = "Bearer", ExpiresIn = "0", Scope = _fixture.Options.SCOPE })
+                .ReturnsAsync(new OktaToken { AccessToken = "second-token", TokenType = "Bearer", ExpiresIn = "0", Scope = _fixture.Options.SCOPE });
 
             var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper, new OktaOptions
             {
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
                 OAUTHURL = _fixture.Options.OAUTHURL,
-                OAUTHKEY = _fixture.Options.OAUTHKEY,
+                AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,
                 LIFETIME = 1,
@@ -243,7 +243,7 @@ namespace UnitTesting.Assertions.Filter
             await filter.OnActionExecutionAsync(context1, next);
             tokenService.Verify(s => s.GetToken(CancellationToken.None), Times.Once);
 
-            var cached1 = await cacheHelper.Get(_fixture.Options.OAUTHKEY);
+            var cached1 = await cacheHelper.Get(_fixture.Options.AUTHKEY);
             Assert.NotNull(cached1);
             Assert.Contains("first-token", cached1!);
 
@@ -262,7 +262,7 @@ namespace UnitTesting.Assertions.Filter
             await filter.OnActionExecutionAsync(context3, next3);
 
             tokenService.Verify(service => service.GetToken(CancellationToken.None), Times.Exactly(2));
-            var cached2 = await cacheHelper.Get(_fixture.Options.OAUTHKEY);
+            var cached2 = await cacheHelper.Get(_fixture.Options.AUTHKEY);
             Assert.NotNull(cached2);
             Assert.Contains("second-token", cached2!);
 

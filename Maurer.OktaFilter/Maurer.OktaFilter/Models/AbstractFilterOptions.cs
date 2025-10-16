@@ -9,7 +9,7 @@ namespace Maurer.OktaFilter.Models
         /// </summary>
 
         [Required]
-        public string OAUTHKEY { get; init; } = "";
+        public string AUTHKEY { get; init; } = "";
 
         /// <summary>
         /// Number of times to retry (max 10).

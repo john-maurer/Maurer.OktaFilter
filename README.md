@@ -315,7 +315,7 @@ You'll need to acquire a valid oauth user name, password and URL from your organ
 
 Use the typed options `OktaOptions` to configure the filter and how OKTA tokens are managed.
 
-**OAuth Options**
+**OKTA Options**
 
 These properties configure the token exchange:
 

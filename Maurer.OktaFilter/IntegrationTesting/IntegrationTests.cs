@@ -22,7 +22,7 @@ namespace IntegrationTesting
                 ["Okta:USER"] = "client_id",
                 ["Okta:PASSWORD"] = "secret",
                 ["Okta:OAUTHURL"] = "https://secure.com/oauth2/v1/token",
-                ["Okta:OAUTHKEY"] = "OKTA-TOKEN",
+                ["Okta:AUTHKEY"] = "OKTA-TOKEN",
                 ["Okta:GRANT"] = "client_credentials",
                 ["Okta:SCOPE"] = "openid",
                 ["Okta:RETRIES"] = "1",
@@ -35,7 +35,7 @@ namespace IntegrationTesting
                 ["Okta:USER"] = "client_id",
                 ["Okta:PASSWORD"] = "secret",
                 ["Okta:OAUTHURL"] = "http://insecure.local/token", // not HTTPS → should fail
-                ["Okta:OAUTHKEY"] = "OKTA-TOKEN",
+                ["Okta:AUTHKEY"] = "OKTA-TOKEN",
                 ["Okta:GRANT"] = "client_credentials",
                 ["Okta:SCOPE"] = "openid",
                 ["Okta:RETRIES"] = "1",
@@ -130,7 +130,7 @@ namespace IntegrationTesting
 
             //verify cache value
             var helper = app.Services.GetRequiredService<IDistributedCacheHelper>();
-            var key = app.Services.GetRequiredService<OktaOptions>().OAUTHKEY;
+            var key = app.Services.GetRequiredService<OktaOptions>().AUTHKEY;
             var tokenJson = await helper.Get(key);
 
             tokenJson.Should().NotBeNullOrWhiteSpace();
@@ -153,7 +153,7 @@ namespace IntegrationTesting
                 new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 
             // Singletons/transients are fine from root:
-            serviceProvider.GetRequiredService<OktaOptions>().OAUTHKEY.Should().Be("OKTA-TOKEN");
+            serviceProvider.GetRequiredService<OktaOptions>().AUTHKEY.Should().Be("OKTA-TOKEN");
             serviceProvider.GetRequiredService<IDistributedCache>().Should().NotBeNull();
             serviceProvider.GetRequiredService<IDistributedCacheHelper>().Should().NotBeNull();
             serviceProvider.GetRequiredService<ITokenService>().Should().NotBeNull();
