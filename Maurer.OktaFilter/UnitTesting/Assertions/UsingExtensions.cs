@@ -105,7 +105,7 @@ namespace UnitTesting.Assertions
             {
                 USER = "client_id",
                 PASSWORD = "secret",
-                OAUTHURL = "https://example.com/oauth2/v1/token",
+                AUTHURL = "https://example.com/oauth2/v1/token",
                 AUTHKEY = "OKTA-TOKEN",
                 GRANT = "client_credentials",
                 SCOPE = "openid",
@@ -128,7 +128,7 @@ namespace UnitTesting.Assertions
         [Fact]
         public void AddOktaFilter_CodeOnlyOptions_BadUrl_ThrowsImmediately()
         {
-            var options = new OktaOptions { OAUTHURL = "http://not-https" };
+            var options = new OktaOptions { AUTHURL = "http://not-https" };
             var services = new ServiceCollection();
             Assert.Throws<ArgumentException>(() => services.AddOktaFilter(options));
         }

@@ -31,8 +31,8 @@ namespace Maurer.OktaFilter
                 .Bind(configuration.GetSection(OKTASectionName))
                 .ValidateDataAnnotations()
                 .Validate(
-                    options => Uri.TryCreate(options.OAUTHURL, UriKind.Absolute, out var uri) && 
-                    uri.Scheme == Uri.UriSchemeHttps, "OAUTHURL must be an absolute HTTPS URL.")
+                    options => Uri.TryCreate(options.AUTHURL, UriKind.Absolute, out var uri) && 
+                    uri.Scheme == Uri.UriSchemeHttps, "AUTHURL must be an absolute HTTPS URL.")
                 .ValidateOnStart();
 
             // TokenService currently consumes OktaOptions (not IOptions<OktaOptions>),
@@ -133,13 +133,13 @@ namespace Maurer.OktaFilter
         /// <param name="useDistributedMemoryCache">>Determines whether or not a distributed cache is setup or an undistributed one is; true by default.</param>
         /// <returns>Collection of service descriptors modified for the AuthenticationFilter.</returns>
         /// <exception cref="ArgumentNullException">'OktaOptions' is null</exception>
-        /// <exception cref="ArgumentException">OAUTHURL must be an absolute HTTPS URL.</exception>
+        /// <exception cref="ArgumentException">AUTHURL must be an absolute HTTPS URL.</exception>
 
         public static IServiceCollection AddOktaFilter(this IServiceCollection services, OktaOptions options, bool useDefaultCache = true, string OKTASectionName = "Okta", bool useDistributedMemoryCache = true)
         {
             if (options is null) throw new ArgumentNullException(nameof(options));
-            if (!Uri.TryCreate(options.OAUTHURL, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
-                throw new ArgumentException("OAUTHURL must be an absolute HTTPS URL.", nameof(options));
+            if (!Uri.TryCreate(options.AUTHURL, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+                throw new ArgumentException("AUTHURL must be an absolute HTTPS URL.", nameof(options));
 
             services.TryAddSingleton(options);
 
@@ -166,13 +166,13 @@ namespace Maurer.OktaFilter
         /// <param name="useDistributedMemoryCache">>Determines whether or not a distributed cache is setup or an undistributed one is; true by default.</param>
         /// <returns>Collection of service descriptors modified for the AuthenticationFilter.</returns>
         /// <exception cref="ArgumentNullException">'OktaOptions' is null</exception>
-        /// <exception cref="ArgumentException">OAUTHURL must be an absolute HTTPS URL.</exception>
+        /// <exception cref="ArgumentException">AUTHURL must be an absolute HTTPS URL.</exception>
 
         public static IServiceCollection AddOktaFilter(this IServiceCollection services, OktaOptions options, Action<IHttpClientBuilder> configureHttp, bool useDefaultCache = true, bool useDistributedMemoryCache = true)
         {
             if (options is null) throw new ArgumentNullException(nameof(options));
-            if (!Uri.TryCreate(options.OAUTHURL, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
-                throw new ArgumentException("OAUTHURL must be an absolute HTTPS URL.", nameof(options));
+            if (!Uri.TryCreate(options.AUTHURL, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+                throw new ArgumentException("AUTHURL must be an absolute HTTPS URL.", nameof(options));
 
             services.TryAddSingleton(options);
 

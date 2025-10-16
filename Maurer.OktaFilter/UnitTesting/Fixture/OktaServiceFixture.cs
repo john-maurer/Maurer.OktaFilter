@@ -14,7 +14,7 @@ namespace UnitTesting.Fixture
             {
                 HttpResponseMessage result;
 
-                if (request!.RequestUri!.AbsoluteUri == Options.OAUTHURL)
+                if (request!.RequestUri!.AbsoluteUri == Options.AUTHURL)
                 {
                     var response = new HttpResponseMessage(status);
                     response.Content = new StringContent(payload!);
@@ -23,7 +23,7 @@ namespace UnitTesting.Fixture
                 else
                 {
                     var response = new HttpResponseMessage(HttpStatusCode.NotFound);
-                    response.Content = new StringContent($"Bad set-up in OKTA service fixture; the target URL does not match '{Options.OAUTHURL}'.");
+                    response.Content = new StringContent($"Bad set-up in OKTA service fixture; the target URL does not match '{Options.AUTHURL}'.");
                     result = response;
                 }
 
@@ -55,7 +55,7 @@ namespace UnitTesting.Fixture
 
         public OktaOptions Options { get; set; } = new OktaOptions
         {
-            OAUTHURL = "https://mockoauthserver.com/token",
+            AUTHURL = "https://mockoauthserver.com/token",
             USER = "testuser",
             PASSWORD = "testpassword",
             AUTHKEY = "OKTA-TOKEN",

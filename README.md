@@ -136,16 +136,20 @@ This library aims to provide a seamless solution for acquiring, applying, and st
 
 ```mermaid
 classDiagram
-class OktaOptions {
-  +USER : string
-  +PASSWORD : string
-  +OAUTHURL : string
-  +OAUTHKEY : string
-  +GRANT : string
-  +SCOPE : string
+class AbstractFilterOptions {
+  <<interface>>
+  +AUTHURL : string
+  +AUTHKEY : string
   +RETRIES : int
   +SLEEP : int
   +LIFETIME : int
+}
+
+class OktaOptions : AbstractFilterOptions {
+  +USER : string
+  +PASSWORD : string
+  +GRANT : string
+  +SCOPE : string
 }
 
 class IDistributedCacheHelper {
@@ -214,14 +218,14 @@ participant Action as Controller Action
 
 Client->>MVC: Request /controller/action
 MVC->>Filter: OnActionExecutionAsync(...)
-Filter->>Cache: Has(OktaOptions.OAUTHKEY)?
+Filter->>Cache: Has(OktaOptions.AUTHKEY)?
 alt token not present
   loop up to OktaOptions.RETRIES (sleep OktaOptions.SLEEP s)
     Filter->>TokenSvc: GetToken()
-    TokenSvc->>Okta: POST OktaOptions.OAUTHURL (grant, scope, basic auth)
+    TokenSvc->>Okta: POST OktaOptions.AUTHURL (grant, scope, basic auth)
     Okta-->>TokenSvc: 200 + { access_token, ... }
     TokenSvc-->>Filter: Token
-    Filter->>Cache: Set(OAUTHKEY, token, TTL=OktaOptions.LIFETIME minutes)
+    Filter->>Cache: Set(AUTHKEY, token, TTL=OktaOptions.LIFETIME minutes)
   end
 end
 Filter->>Action: await next()
@@ -242,7 +246,7 @@ participant Action
 
 Client->>MVC: Request
 MVC->>Filter: OnActionExecutionAsync(...)
-Filter->>Cache: Has(OktaOptions.OAUTHKEY)?
+Filter->>Cache: Has(OktaOptions.AUTHKEY)?
 Cache-->>Filter: true
 Filter->>Action: await next()
 Action-->>MVC: IActionResult
@@ -258,7 +262,7 @@ participant Filter as AuthenticationFilter<TService>
 participant Cache as IDistributedCacheHelper
 participant TokenSvc as ITokenService
 
-Filter->>Cache: Has(OAUTHKEY)?
+Filter->>Cache: Has(AUTHKEY)?
 Cache-->>Filter: false
 loop Retry (OktaOptions.RETRIES) with delay (OktaOptions.RETRYSLEEP s)
   Filter->>TokenSvc: GetToken()
@@ -266,7 +270,7 @@ loop Retry (OktaOptions.RETRIES) with delay (OktaOptions.RETRYSLEEP s)
     TokenSvc-->>Filter: failure
   else success
     TokenSvc-->>Filter: Token
-    Filter->>Cache: Set(OAUTHKEY, token, TTL)
+    Filter->>Cache: Set(AUTHKEY, token, TTL)
     note over Filter: Token cached (loop ends conceptually)
   end
 end
@@ -298,11 +302,11 @@ end
 
 Add three elements to your Azure Key Vault:
 
-- `OAUTH-PASSWORD`  
-- `OAUTH-URL`  
-- `OAUTH-USER`
+- `AUTH-PASSWORD`  
+- `AUTH-URL`  
+- `AUTH-USER`
 
-You'll need to acquire a valid oauth user name, password and URL from your organization.
+You'll need to acquire a valid auth user name, password and URL from your organization.
 
 ### 2. Install the Package
 
@@ -317,11 +321,10 @@ Use the typed options `OktaOptions` to configure the filter and how OKTA tokens 
 
 **OKTA Options**
 
-These properties configure the token exchange:
+These properties configure the OKTA token exchange:
 
 - **USER** – Authorized user/principle ID  
 - **PASSWORD** – Password associated with user/principle ID  
-- **OAUTHURL** – Your organization's [OKTA URL](https://developer.okta.com/docs/guides/find-your-domain/main/).  
 - **GRANT** – The OAuth2 grant type (e.g., `client_credentials`, `authorization_code`, etc.).
 - **SCOPE** – The permissions requested when obtaining an access token. See [Scopes](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc).
 
@@ -333,16 +336,17 @@ These properties configure the retry policy for the token exchange:
 - **RETRIES** – The number of attempts the filter should make to acquire an OKTA token.  
 - **SLEEP** – The number in seconds to wait in between retry attempts.  
 - **LIFETIME** – The lifetime in seconds of the OKTA token, should not exceed 55 minutes.
+- **AUTHURL** – Your organization's [OKTA URL](https://developer.okta.com/docs/guides/find-your-domain/main/). 
 
 ```json
 {
   "Okta": {
     "USER": "client_id",
     "PASSWORD": "client_secret",
-    "OAUTHURL": "https://your-okta-domain/oauth2/v1/token",
-    "OAUTHKEY": "OKTA-TOKEN",
     "GRANT": "client_credentials",
     "SCOPE": "openid profile email",
+    "AUTHURL": "https://your-okta-domain/oauth2/v1/token",
+    "AUTHKEY": "OKTA-TOKEN",
     "RETRIES": 2,
     "SLEEP": 1,
     "LIFETIME": 30
@@ -369,10 +373,10 @@ Add to your `keyvault` values to the **OKTA** secrets.
 ```bash
 az keyvault secret set --vault-name <vault> --name Okta--USER --value <client_id>
 az keyvault secret set --vault-name <vault> --name Okta--PASSWORD --value <client_secret>
-az keyvault secret set --vault-name <vault> --name Okta--OAUTHURL --value https://your-okta-domain/oauth2/v1/token
-az keyvault secret set --vault-name <vault> --name Okta--OAUTHKEY --value OKTA-TOKEN
 az keyvault secret set --vault-name <vault> --name Okta--GRANT --value client_credentials
 az keyvault secret set --vault-name <vault> --name Okta--SCOPE --value "openid profile email"
+az keyvault secret set --vault-name <vault> --name Okta--AUTHURL --value https://your-okta-domain/oauth2/v1/token
+az keyvault secret set --vault-name <vault> --name Okta--AUTHKEY --value OKTA-TOKEN
 az keyvault secret set --vault-name <vault> --name Okta--RETRIES --value 2
 az keyvault secret set --vault-name <vault> --name Okta--SLEEP --value 1
 az keyvault secret set --vault-name <vault> --name Okta--LIFETIME --value 30
@@ -391,9 +395,8 @@ With delimit for **configuration** section separators being `:` and **Key Vault*
 |------------------------|------------------------------------------------------------|
 | Security:Okta:USER     | Security--Okta--USER                                       |
 | Security:Okta:PASSWORD | Security--Okta-PASSWORD                                    |
-| Security:Okta:OAUTHURL | Security--Okta--OAUTHURL                                   |
-| Security:Okta:OAUTHURL | Security--Okta--OAUTHURL                                   |
-| Security:Okta:OAUTHKEY | Security--Okta--OAUTHKEY                                   |
+| Security:Okta:AUTHURL  | Security--Okta--AUTHURL                                    |
+| Security:Okta:AUTHKEY  | Security--Okta--AUTHKEY                                    |
 
 ##### 3.2.1: Step 1 - Dependencies
 
@@ -428,7 +431,7 @@ Bind `OktaOptions` with `keyvault` values included.
 builder.Services.AddOptions<OktaOptions>()
     .Bind(builder.Configuration.GetSection("Okta"))
     .ValidateDataAnnotations()
-    .Validate(options => Uri.TryCreate(options.OAUTHURL, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps, "OAUTHURL must be an absolute HTTPS URL.")
+    .Validate(options => Uri.TryCreate(options.AUTHURL, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps, "AUTHURL must be an absolute HTTPS URL.")
     .ValidateOnStart();
 ```
 
@@ -464,7 +467,7 @@ using Maurer.OktaFilter.Models;
 builder.Services.AddOptions<OktaOptions>()
     .Bind(builder.Configuration.GetSection("Okta"))
     .ValidateDataAnnotations()
-    .Validate(o => Uri.TryCreate(o.OAUTHURL, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps, "OAUTHURL must be an absolute HTTPS URL.")
+    .Validate(o => Uri.TryCreate(o.AUTHURL, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps, "AUTHURL must be an absolute HTTPS URL.")
     .ValidateOnStart();
 
 // Inject caching
@@ -650,7 +653,7 @@ public static IServiceCollection AddOktaFilter(
 
 - `configuration` — values are bound from the `OKTASectionName` section (default `"Okta"`) to `OktaOptions` and validated.
 - `OKTASectionName` — customize where options are read from (e.g., `"Security:Okta"`). Works with appsettings, env vars, Azure App Configuration, and Azure Key Vault.
-- `options` — pre-constructed `OktaOptions`; validated (HTTPS `OAUTHURL`, data annotations).  
+- `options` — pre-constructed `OktaOptions`; validated (HTTPS `AUTHURL`, data annotations).  
   *Note:* the `OKTASectionName` parameter is ignored in code-only overloads.
 - `useDefaultCache` (default `true`)  
   - **true** ➜ the extension registers a default cache for you:
@@ -732,10 +735,10 @@ builder.Services.AddOktaFilter(new OktaOptions
 {
     USER      = "...",
     PASSWORD  = "...",
-    OAUTHURL  = "https://your-okta-domain/oauth2/v1/token",
-    OAUTHKEY  = "OKTA-TOKEN",
     GRANT     = "client_credentials",
     SCOPE     = "openid profile",
+    AUTHURL  = "https://your-okta-domain/oauth2/v1/token",
+    AUTHKEY  = "OKTA-TOKEN",
     RETRIES   = 1,
     SLEEP     = 0,
     LIFETIME  = 30
@@ -744,7 +747,7 @@ builder.Services.AddOktaFilter(new OktaOptions
 
 #### 4.7 Validation behavior
 
-- `OAUTHURL` must be an **absolute HTTPS** URL; otherwise resolving `OktaOptions` throws `OptionsValidationException`.
+- `AUTHURL` must be an **absolute HTTPS** URL; otherwise resolving `OktaOptions` throws `OptionsValidationException`.
 - `LIFETIME` must be ≥ 1 minute (and your own guidance recommends ≤ 55 minutes).  
 - Data annotations on `OktaOptions` are enforced when bound from configuration.
 
@@ -753,7 +756,7 @@ builder.Services.AddOktaFilter(new OktaOptions
 - **“No service for type IDistributedCache”** — You passed `useDistributedMemoryCache: false` but didn’t register a distributed provider. Add one of:  
   `AddDistributedMemoryCache`, `AddStackExchangeRedisCache`, or `AddDistributedSqlServerCache`.
 - **Resolving scoped filter from root provider** — Create a scope: `using var scope = sp.CreateScope();` then resolve `AuthenticationFilter<TokenService>`.
-- **Non-HTTPS OAUTHURL** — Will fail on options resolution; fix your config or test values.
+- **Non-HTTPS AUTHURL** — Will fail on options resolution; fix your config or test values.
 
 ---
 
@@ -792,11 +795,11 @@ public class MyController : ControllerBase
 **As a Token object**
 ```csharp
 var tokenResponse = JsonConvert.DeserializeObject<Token>
-    ((await _memoryCache.Get(_options.OAUTHKEY))!);
+    ((await _memoryCache.Get(_options.AUTHKEY))!);
 ```
 
 **Just the token string**
 ```csharp
 var token = JsonConvert.DeserializeObject<Token>
-    ((await _memoryCache.Get(_options.OAUTHKEY))!).AccessToken;
+    ((await _memoryCache.Get(_options.AUTHKEY))!).AccessToken;
 ```

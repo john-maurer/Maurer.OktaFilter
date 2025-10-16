@@ -71,7 +71,7 @@ namespace UnitTesting.Assertions.Filter
             var filter = new TestableAuthenticationFilter(tokenService.Object, cacheHelper.Object, new OktaOptions { 
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
-                OAUTHURL = _fixture.Options.OAUTHURL,
+                AUTHURL = _fixture.Options.AUTHURL,
                 AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,
@@ -113,7 +113,7 @@ namespace UnitTesting.Assertions.Filter
             {
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
-                OAUTHURL = _fixture.Options.OAUTHURL,
+                AUTHURL = _fixture.Options.AUTHURL,
                 AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,
@@ -145,7 +145,7 @@ namespace UnitTesting.Assertions.Filter
             {
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
-                OAUTHURL = _fixture.Options.OAUTHURL,
+                AUTHURL = _fixture.Options.AUTHURL,
                 AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,
@@ -183,7 +183,7 @@ namespace UnitTesting.Assertions.Filter
             {
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
-                OAUTHURL = _fixture.Options.OAUTHURL,
+                AUTHURL = _fixture.Options.AUTHURL,
                 AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,
@@ -226,7 +226,7 @@ namespace UnitTesting.Assertions.Filter
             {
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
-                OAUTHURL = _fixture.Options.OAUTHURL,
+                AUTHURL = _fixture.Options.AUTHURL,
                 AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,

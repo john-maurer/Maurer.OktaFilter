@@ -25,7 +25,7 @@ namespace UnitTesting.Fixture
 
         public OktaOptions Options { get; set; } = new OktaOptions
         {
-            OAUTHURL = "https://mockoauthserver.com/token",
+            AUTHURL = "https://mockoauthserver.com/token",
             USER = "testuser",
             PASSWORD = "testpassword",
             AUTHKEY = "OKTA-TOKEN",

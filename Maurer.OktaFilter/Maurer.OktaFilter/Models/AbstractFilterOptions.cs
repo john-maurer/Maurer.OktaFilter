@@ -12,6 +12,13 @@ namespace Maurer.OktaFilter.Models
         public string AUTHKEY { get; init; } = "";
 
         /// <summary>
+        /// URL to exchange credentials with for a security token (absolute HTTPS URL).
+        /// </summary>
+
+        [Required]
+        public string AUTHURL { get; init; } = "";
+
+        /// <summary>
         /// Number of times to retry (max 10).
         /// </summary>
 

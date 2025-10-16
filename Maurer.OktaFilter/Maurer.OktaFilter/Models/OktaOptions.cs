@@ -19,13 +19,6 @@ namespace Maurer.OktaFilter.Models
         public string PASSWORD { get; init; } = "";
 
         /// <summary>
-        /// OTKA OAuth url (absolute HTTPS URL).
-        /// </summary>
-
-        [Required] 
-        public string OAUTHURL { get; init; } = "";
-
-        /// <summary>
         /// Grant Type.
         /// </summary>
 

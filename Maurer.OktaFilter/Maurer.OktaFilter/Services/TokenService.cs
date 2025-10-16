@@ -43,8 +43,8 @@ namespace Maurer.OktaFilter.Services
                     (Encoding.UTF8.GetBytes($"{_options.USER}:{_options.PASSWORD}"));
 
                 //Restrict to HTTPS - Prevents accidental plaintext or SSRF to non-HTTPS
-                if (!Uri.TryCreate(_options.OAUTHURL, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
-                    throw new InvalidOperationException("OAUTHURL must be an absolute HTTPS URL.");
+                if (!Uri.TryCreate(_options.AUTHURL, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+                    throw new InvalidOperationException("AUTHURL must be an absolute HTTPS URL.");
 
                 //Create request that prefers HTTP/2; fail fast on non-2xx; don't buffer unnecessarily.
                 using (var request = new HttpRequestMessage(HttpMethod.Post, uri) { Version = HttpVersion.Version20, VersionPolicy = HttpVersionPolicy.RequestVersionOrHigher })

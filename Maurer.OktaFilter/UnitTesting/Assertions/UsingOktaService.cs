@@ -62,14 +62,14 @@ namespace UnitTesting.Assertions
         }
 
         [Fact]
-        public async Task ShouldTargetConfiguredOAuthUrl()
+        public async Task ShouldTargetConfiguredAUTHURL()
         {
             Uri? requestUri = null;
             var service = MakeService(request => requestUri = request.RequestUri);
 
             await service.GetToken();
 
-            Assert.Equal(new Uri(_fixture.Options.OAUTHURL), requestUri);
+            Assert.Equal(new Uri(_fixture.Options.AUTHURL), requestUri);
         }
 
         [Fact]
@@ -256,7 +256,7 @@ namespace UnitTesting.Assertions
             {
                 USER = _fixture.Options.USER,
                 PASSWORD = _fixture.Options.PASSWORD,
-                OAUTHURL = "http://mockoauthserver.com/token", // Force non-HTTPS to trigger the guard
+                AUTHURL = "http://mockoauthserver.com/token", // Force non-HTTPS to trigger the guard
                 AUTHKEY = _fixture.Options.AUTHKEY,
                 GRANT = _fixture.Options.GRANT,
                 SCOPE = _fixture.Options.SCOPE,

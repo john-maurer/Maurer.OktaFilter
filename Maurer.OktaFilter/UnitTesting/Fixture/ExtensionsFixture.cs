@@ -10,7 +10,7 @@ namespace UnitTesting.Fixture
             {
                 ["Okta:USER"] = "client_id",
                 ["Okta:PASSWORD"] = "secret",
-                ["Okta:OAUTHURL"] = "https://secure.com/oauth2/v1/token",
+                ["Okta:AUTHURL"] = "https://secure.com/oauth2/v1/token",
                 ["Okta:AUTHKEY"] = "OKTA-TOKEN",
                 ["Okta:GRANT"] = "client_credentials",
                 ["Okta:SCOPE"] = "openid",
@@ -23,7 +23,7 @@ namespace UnitTesting.Fixture
             {
                 ["Okta:USER"] = "client_id",
                 ["Okta:PASSWORD"] = "secret",
-                ["Okta:OAUTHURL"] = "http://insecure.local/token", // not HTTPS → should fail
+                ["Okta:AUTHURL"] = "http://insecure.local/token", // not HTTPS → should fail
                 ["Okta:AUTHKEY"] = "OKTA-TOKEN",
                 ["Okta:GRANT"] = "client_credentials",
                 ["Okta:SCOPE"] = "openid",

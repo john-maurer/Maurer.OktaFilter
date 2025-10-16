@@ -21,7 +21,7 @@ namespace IntegrationTesting
             {
                 ["Okta:USER"] = "client_id",
                 ["Okta:PASSWORD"] = "secret",
-                ["Okta:OAUTHURL"] = "https://secure.com/oauth2/v1/token",
+                ["Okta:AUTHURL"] = "https://secure.com/oauth2/v1/token",
                 ["Okta:AUTHKEY"] = "OKTA-TOKEN",
                 ["Okta:GRANT"] = "client_credentials",
                 ["Okta:SCOPE"] = "openid",
@@ -34,7 +34,7 @@ namespace IntegrationTesting
             {
                 ["Okta:USER"] = "client_id",
                 ["Okta:PASSWORD"] = "secret",
-                ["Okta:OAUTHURL"] = "http://insecure.local/token", // not HTTPS → should fail
+                ["Okta:AUTHURL"] = "http://insecure.local/token", // not HTTPS → should fail
                 ["Okta:AUTHKEY"] = "OKTA-TOKEN",
                 ["Okta:GRANT"] = "client_credentials",
                 ["Okta:SCOPE"] = "openid",
@@ -61,7 +61,7 @@ namespace IntegrationTesting
             services.AddLogging();
 
             // Register the stub handler as singleton so we can read CallCount after calls
-            var endpoint = new Uri(config["Okta:OAUTHURL"]!);
+            var endpoint = new Uri(config["Okta:AUTHURL"]!);
             var stub = new StubbedTokenHandler(endpoint,
                 "{\"access_token\":\"aaa-first\",\"token_type\":\"Bearer\",\"expires_in\":300,\"scope\":\"openid\"}");
 
@@ -101,7 +101,7 @@ namespace IntegrationTesting
             builder.Services.AddDistributedMemoryCache();
 
             // Stub Okta endpoint for TokenService
-            var endpoint = new Uri(configuration["Okta:OAUTHURL"]!);
+            var endpoint = new Uri(configuration["Okta:AUTHURL"]!);
             var stub = new StubbedTokenHandler(endpoint,
                 "{\"access_token\":\"first-token\",\"token_type\":\"Bearer\",\"expires_in\":300,\"scope\":\"openid\"}",
                 "{\"access_token\":\"second-token\",\"token_type\":\"Bearer\",\"expires_in\":300,\"scope\":\"openid\"}");
