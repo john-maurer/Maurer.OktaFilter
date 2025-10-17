@@ -136,7 +136,7 @@ This library aims to provide a seamless solution for acquiring, applying, and st
 
 ```mermaid
 classDiagram
-abstract class AbstractFilterOptions {
+class AbstractFilterOptions {
   +AUTHURL : string
   +AUTHKEY : string
   +RETRIES : int
