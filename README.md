@@ -136,8 +136,7 @@ This library aims to provide a seamless solution for acquiring, applying, and st
 
 ```mermaid
 classDiagram
-class AbstractFilterOptions {
-  <<interface>>
+abstract class AbstractFilterOptions {
   +AUTHURL : string
   +AUTHKEY : string
   +RETRIES : int
@@ -145,7 +144,7 @@ class AbstractFilterOptions {
   +LIFETIME : int
 }
 
-class OktaOptions : AbstractFilterOptions {
+class OktaOptions {
   +USER : string
   +PASSWORD : string
   +GRANT : string
@@ -195,6 +194,7 @@ class Token {
   +Scope : string
 }
 
+OktaOptions --|> AbstractFilterOptions
 OktaOptions <.. TokenService
 OktaOptions <.. AuthenticationFilter~TService~
 IDistributedCacheHelper <|.. DistributedCacheHelper
@@ -306,7 +306,7 @@ Add three elements to your Azure Key Vault:
 - `AUTH-URL`  
 - `AUTH-USER`
 
-You'll need to acquire a valid auth user name, password and URL from your organization.
+You'll need to acquire a valid auth enuser name, password and URL from your organization.
 
 ### 2. Install the Package
 
