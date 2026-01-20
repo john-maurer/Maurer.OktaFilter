@@ -803,3 +803,47 @@ var tokenResponse = JsonConvert.DeserializeObject<Token>
 var token = JsonConvert.DeserializeObject<Token>
     ((await _memoryCache.Get(_options.AUTHKEY))!).AccessToken;
 ```
+
+
+
+
+flowchart TD
+classDef crit fill:#ffe6e6,stroke:#b00000,stroke-width:2px,color:#111;
+classDef non fill:#eef6ff,stroke:#245b9a,stroke-width:1px,color:#111;
+
+T3["T3 Geometry engine PoC (4w)"]:::crit
+U1["U1 Responsive UI (4w)"]:::crit
+U3["U3 Drag-and-drop editing (6w)"]:::crit
+U4["U4 Measurement grid (3w)"]:::crit
+D5["D5 Precision dimension edits (3w)"]:::crit
+D6["D6 Auto-fit + spacing validation (4w)"]:::crit
+D7["D7 Layered foam support (4w)"]:::crit
+E2["E2 Production file generation (6w)"]:::crit
+Q2["Q2 Performance & stress testing (3w)"]:::crit
+Q3["Q3 UAT (PSI validation) (4w)"]:::crit
+P1["P1 Staging+Prod + CI/CD (4w)"]:::crit
+P2["P2 Post-launch support (4w)"]:::crit
+
+T3 --> U3
+U1 --> U3 --> U4 --> D5 --> D6 --> D7 --> E2 --> Q2 --> Q3 --> P1 --> P2
+
+%% Supporting branches (non-critical)
+U1 --> U2["U2 Guided workflow (3w)"]:::non
+U2 --> D1["D1 Case library (3w)"]:::non
+U2 --> D2["D2 Foam library (2w)"]:::non
+U3 --> D3["D3 Standard shapes (4w)"]:::non
+T3 --> D4["D4 Image tracing (5w)"]:::non
+U4 --> V1["V1 2D layout (3w)"]:::non --> V2["V2 3D preview (4w)"]:::non
+D7 --> V2 --> Q3
+
+D6 --> E3["E3 Export validation rules (2w)"]:::non --> E2
+D7 --> E1["E1 BOM generation (3w)"]:::non --> Q3
+
+T1["T1 Azure backend baseline (6w)"]:::non --> T2["T2 Secure data handling (4w)"]:::non
+T2 --> A1["A1 Login (3w)"]:::non --> A2["A2 Save/edit/duplicate (4w)"]:::non --> A3["A3 Share link (2w)"]:::non
+A2 --> C1["C1 Quote submit (2w)"]:::non --> I1["I1 HubSpot integration (2w)"]:::non --> Q3
+A1 --> AD1["AD1 Admin dashboard (3w)"]:::non --> AD2["AD2 Admin manage libraries (3w)"]:::non --> Q3
+
+U1 --> Q1["Q1 Cross-browser (2w)"]:::non
+U3 --> Q1
+V1 --> Q1
